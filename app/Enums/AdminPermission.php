@@ -18,6 +18,7 @@ enum AdminPermission: string
     case OrdersRefund = 'orders.refund';
     case CustomersView = 'customers.view';
     case CustomersBlock = 'customers.block';
+    case CustomersSupport = 'customers.support';
     case CouponsManage = 'coupons.manage';
     case BannersManage = 'banners.manage';
     case ReviewsModerate = 'reviews.moderate';
@@ -26,6 +27,16 @@ enum AdminPermission: string
     case RolesManage = 'roles.manage';
     case ActivityView = 'activity.view';
     case ReportsView = 'reports.view';
+
+    /**
+     * Every permission name, as stored in the permissions table.
+     *
+     * @return array<int, string>
+     */
+    public static function values(): array
+    {
+        return array_map(fn (self $permission): string => $permission->value, self::cases());
+    }
 
     /**
      * Get the human readable label.
@@ -47,6 +58,7 @@ enum AdminPermission: string
             self::OrdersRefund => 'Issue refunds',
             self::CustomersView => 'View customers',
             self::CustomersBlock => 'Block and unblock customers',
+            self::CustomersSupport => 'Manage customer carts, wishlists and coupons',
             self::CouponsManage => 'Manage coupons',
             self::BannersManage => 'Manage banners',
             self::ReviewsModerate => 'Moderate reviews',

@@ -103,6 +103,9 @@
                     <p class="font-medium">{{ __('Account') }}</p>
                     @auth
                         <a href="{{ route('dashboard') }}" wire:navigate class="block text-zinc-500 hover:text-zinc-900 dark:hover:text-white">{{ __('My account') }}</a>
+                        @can('admin.access')
+                            <a href="{{ route('admin.home') }}" wire:navigate class="block text-zinc-500 hover:text-zinc-900 dark:hover:text-white">{{ __('Admin panel') }}</a>
+                        @endcan
                     @else
                         <a href="{{ route('login') }}" wire:navigate class="block text-zinc-500 hover:text-zinc-900 dark:hover:text-white">{{ __('Log in') }}</a>
                         <a href="{{ route('register') }}" wire:navigate class="block text-zinc-500 hover:text-zinc-900 dark:hover:text-white">{{ __('Create account') }}</a>

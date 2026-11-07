@@ -399,7 +399,7 @@ new class extends Component {
                     <div class="text-sm" role="status">
                         @if ($delivery['serviceable'])
                             <p class="text-green-700 dark:text-green-400">{{ __('Delivers to :city, :state by :date.', ['city' => $delivery['city'], 'state' => $delivery['state'], 'date' => $delivery['estimated_on']]) }}</p>
-                            <p class="text-zinc-500">{{ $delivery['cod'] ? __('Cash on delivery available.') : __('Cash on delivery is not available here.') }}</p>
+                            <p class="text-zinc-500">{{ $delivery['cod'] && $product->cod_eligible ? __('Cash on delivery available.') : __('Cash on delivery is not available here.') }}</p>
                         @else
                             <p class="text-red-600">{{ __('Sorry, we do not deliver to this pincode yet.') }}</p>
                         @endif

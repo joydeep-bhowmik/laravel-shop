@@ -68,6 +68,7 @@ use Spatie\Sluggable\SlugOptions;
     'published_at',
     'scheduled_for',
     'deal_ends_at',
+    'cod_eligible',
 ])]
 class Product extends Model implements HasMedia
 {
@@ -93,7 +94,7 @@ class Product extends Model implements HasMedia
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'status', 'type', 'category_id', 'brand_id', 'published_at', 'scheduled_for', 'deal_ends_at', 'gst_rate'])
+            ->logOnly(['name', 'status', 'type', 'category_id', 'brand_id', 'published_at', 'scheduled_for', 'deal_ends_at', 'gst_rate', 'cod_eligible'])
             ->logOnlyDirty();
     }
 
@@ -108,6 +109,7 @@ class Product extends Model implements HasMedia
             'type' => ProductType::class,
             'status' => ProductStatus::class,
             'gst_rate' => 'integer',
+            'cod_eligible' => 'boolean',
             'published_at' => 'datetime',
             'scheduled_for' => 'datetime',
             'deal_ends_at' => 'datetime',

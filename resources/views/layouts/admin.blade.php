@@ -32,6 +32,11 @@
                         <flux:sidebar.item icon="archive-box" :href="route('admin.inventory.index')" :current="request()->routeIs('admin.inventory.*')" wire:navigate>
                             {{ __('Inventory') }}
                         </flux:sidebar.item>
+                        @can('coupons.manage')
+                            <flux:sidebar.item icon="ticket" :href="route('admin.coupons.index')" :current="request()->routeIs('admin.coupons.*')" wire:navigate>
+                                {{ __('Coupons') }}
+                            </flux:sidebar.item>
+                        @endcan
                         @can('catalog.manage')
                             <flux:sidebar.item icon="squares-2x2" :href="route('admin.categories.index')" :current="request()->routeIs('admin.categories.*')" wire:navigate>
                                 {{ __('Categories') }}
@@ -46,8 +51,18 @@
                     </flux:sidebar.group>
                 @endcan
 
-                @canany(['reviews.moderate', 'settings.manage', 'activity.view'])
+                @canany(['customers.view', 'roles.manage', 'reviews.moderate', 'settings.manage', 'activity.view'])
                     <flux:sidebar.group :heading="__('Administration')" class="grid">
+                        @can('customers.view')
+                            <flux:sidebar.item icon="users" :href="route('admin.users.index')" :current="request()->routeIs('admin.users.*', 'admin.customers.*')" wire:navigate>
+                                {{ __('Users') }}
+                            </flux:sidebar.item>
+                        @endcan
+                        @can('roles.manage')
+                            <flux:sidebar.item icon="shield-check" :href="route('admin.roles.index')" :current="request()->routeIs('admin.roles.*')" wire:navigate>
+                                {{ __('Roles') }}
+                            </flux:sidebar.item>
+                        @endcan
                         @can('reviews.moderate')
                             <flux:sidebar.item icon="star" :href="route('admin.reviews.index')" :current="request()->routeIs('admin.reviews.*')" wire:navigate>
                                 {{ __('Reviews') }}

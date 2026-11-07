@@ -196,6 +196,9 @@ new class extends Component {
 
             <div class="flex flex-wrap gap-2">
                 <flux:button variant="ghost" icon="arrow-down-tray" :href="route('admin.products.export')">{{ __('Export CSV') }}</flux:button>
+                @can('products.import')
+                    <flux:button variant="ghost" icon="arrow-up-tray" x-on:click="$flux.modal('import-products-csv').show()">{{ __('Import CSV') }}</flux:button>
+                @endcan
                 @can('products.create')
                     <flux:button variant="primary" icon="plus" :href="route('admin.products.create')" wire:navigate>{{ __('New product') }}</flux:button>
                 @endcan
@@ -269,28 +272,33 @@ new class extends Component {
         </flux:table>
 
         @can('products.import')
-            <details class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-                <summary class="cursor-pointer font-medium">{{ __('Import prices and stock from CSV') }}</summary>
-                <form wire:submit="importCsv" class="mt-4 flex flex-wrap items-end gap-3">
-                    <flux:field class="w-80">
+            <flux:modal name="import-products-csv" class="md:w-[32rem]">
+                <form wire:submit="importCsv" class="space-y-4">
+                    <flux:heading size="lg">{{ __('Import prices and stock from CSV') }}</flux:heading>
+
+                    <flux:field>
                         <flux:label>{{ __('CSV file') }}</flux:label>
                         <flux:input type="file" wire:model="csvFile" accept=".csv,text/csv" />
                         <flux:description>{{ __('Columns: sku, price (rupees, optional), stock (optional). Export first to get the format.') }}</flux:description>
                         <flux:error name="csvFile" />
                     </flux:field>
-                    <flux:button type="submit" variant="primary">{{ __('Import') }}</flux:button>
-                </form>
 
-                @if ($importErrors !== [])
-                    <flux:callout variant="warning" class="mt-4">
-                        <ul class="list-disc ps-5">
-                            @foreach ($importErrors as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </flux:callout>
-                @endif
-            </details>
+                    @if ($importErrors !== [])
+                        <flux:callout variant="warning">
+                            <ul class="list-disc ps-5">
+                                @foreach ($importErrors as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </flux:callout>
+                    @endif
+
+                    <div class="flex justify-end gap-2">
+                        <flux:button variant="ghost" x-on:click="$flux.modal('import-products-csv').close()">{{ __('Cancel') }}</flux:button>
+                        <flux:button type="submit" variant="primary">{{ __('Import') }}</flux:button>
+                    </div>
+                </form>
+            </flux:modal>
         @endcan
     </div>
 </div>

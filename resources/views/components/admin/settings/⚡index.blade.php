@@ -29,9 +29,15 @@ new class extends Component {
 
     public bool $authRequireVerification = false;
 
+    public bool $activityLogEnabled = false;
+
+    public bool $requireVerifiedForOrders = false;
+
     public bool $darkMode = true;
 
     public string $codMaxOrderRupees = '';
+
+    public bool $codProductsEligibleByDefault = true;
 
     public string $razorpayMode = 'test';
 
@@ -66,7 +72,10 @@ new class extends Component {
         $this->shippingStandardDays = $settings->int('shipping.standard_days');
         $this->codEnabled = $settings->bool('cod.enabled');
         $this->authRequireVerification = $settings->bool('auth.require_email_verification');
+        $this->activityLogEnabled = $settings->bool('activity.enabled');
+        $this->requireVerifiedForOrders = $settings->bool('checkout.require_verified_email');
         $this->darkMode = $settings->bool('appearance.dark_mode');
+        $this->codProductsEligibleByDefault = $settings->bool('cod.products_eligible_by_default');
         $this->codMaxOrderRupees = number_format($settings->int('cod.max_order_paise') / 100, 2, '.', '');
         $this->razorpayMode = (string) $settings->get('razorpay.mode');
         $this->razorpayKeyId = (string) $settings->get('razorpay.key_id');
@@ -110,7 +119,10 @@ new class extends Component {
         $settings->set('shipping.standard_days', (string) $validated['shippingStandardDays']);
         $settings->set('cod.enabled', $this->codEnabled ? '1' : '0');
         $settings->set('auth.require_email_verification', $this->authRequireVerification ? '1' : '0');
+        $settings->set('activity.enabled', $this->activityLogEnabled ? '1' : '0');
+        $settings->set('checkout.require_verified_email', $this->requireVerifiedForOrders ? '1' : '0');
         $settings->set('appearance.dark_mode', $this->darkMode ? '1' : '0');
+        $settings->set('cod.products_eligible_by_default', $this->codProductsEligibleByDefault ? '1' : '0');
         $settings->set('cod.max_order_paise', (string) \App\Services\MoneyFormatter::toPaise($validated['codMaxOrderRupees']));
         $settings->set('razorpay.mode', $validated['razorpayMode']);
         $settings->set('razorpay.key_id', $validated['razorpayKeyId'] ?? '');
@@ -200,6 +212,14 @@ new class extends Component {
             <flux:heading>{{ __('Accounts') }}</flux:heading>
             <flux:switch wire:model="authRequireVerification" :label="__('Require email verification before account pages')" />
             <flux:description>{{ __('Off by default. Customers can always shop; verification is then only requested for account pages.') }}</flux:description>
+            <flux:switch wire:model="requireVerifiedForOrders" :label="__('Only customers with a verified email can place orders')" />
+            <flux:description>{{ __('Off by default. When on, customers who have not verified their email are asked to verify before checkout.') }}</flux:description>
+        </flux:card>
+
+        <flux:card class="space-y-4">
+            <flux:heading>{{ __('Activity log') }}</flux:heading>
+            <flux:switch wire:model="activityLogEnabled" :label="__('Record changes to products, orders and settings')" />
+            <flux:description>{{ __('Off by default. When on, admin changes are written to the activity log. Entries recorded earlier stay visible.') }}</flux:description>
         </flux:card>
 
         <flux:card class="space-y-4">
@@ -211,6 +231,8 @@ new class extends Component {
         <flux:card class="space-y-4">
             <flux:heading>{{ __('Cash on delivery') }}</flux:heading>
             <flux:switch wire:model="codEnabled" :label="__('Offer cash on delivery')" />
+            <flux:switch wire:model="codProductsEligibleByDefault" :label="__('Every product is COD eligible by default')" />
+            <flux:description>{{ __('New products start with cash on delivery on. Turn off a single product in its product page.') }}</flux:description>
             <flux:field>
                 <flux:label>{{ __('Largest order allowed for COD (₹)') }}</flux:label>
                 <flux:input wire:model="codMaxOrderRupees" inputmode="decimal" />

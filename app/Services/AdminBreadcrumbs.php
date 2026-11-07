@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Routing\Route;
 
 /**
@@ -22,7 +23,7 @@ class AdminBreadcrumbs
             return [];
         }
 
-        $trail = [['label' => __('Admin'), 'url' => route('admin.home')]];
+        $trail = [['label' => __('Admin'), 'url' => route('admin.home'), 'icon' => 'home']];
 
         foreach (self::pagesFor($route) as $item) {
             $trail[] = $item;
@@ -40,6 +41,7 @@ class AdminBreadcrumbs
     {
         $productsIndex = ['label' => __('Products'), 'url' => route('admin.products.index')];
         $ordersIndex = ['label' => __('Orders'), 'url' => route('admin.orders.index')];
+        $usersIndex = ['label' => __('Users'), 'url' => route('admin.users.index')];
 
         return match ($route->getName()) {
             'admin.dashboard' => [['label' => __('Dashboard'), 'url' => null]],
@@ -53,6 +55,10 @@ class AdminBreadcrumbs
             'admin.brands.index' => [['label' => __('Brands'), 'url' => null]],
             'admin.attributes.index' => [['label' => __('Attributes'), 'url' => null]],
             'admin.reviews.index' => [['label' => __('Reviews'), 'url' => null]],
+            'admin.coupons.index' => [['label' => __('Coupons'), 'url' => null]],
+            'admin.users.index' => [['label' => __('Users'), 'url' => null]],
+            'admin.customers.show' => [$usersIndex, ['label' => self::parameter($route, 'user', User::class)?->name ?? __('Customer'), 'url' => null]],
+            'admin.roles.index' => [['label' => __('Roles'), 'url' => null]],
             'admin.settings.index' => [['label' => __('Settings'), 'url' => null]],
             'admin.activity.index' => [['label' => __('Activity log'), 'url' => null]],
             default => [],

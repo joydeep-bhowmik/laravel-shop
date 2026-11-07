@@ -237,10 +237,11 @@ new class extends Component {
     {
         return OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('product_variants', 'product_variants.id', '=', 'order_items.product_variant_id')
             ->whereIn('orders.status', self::REVENUE_STATUSES)
             ->where('orders.placed_at', '>=', now()->subDays(30))
-            ->selectRaw('order_items.product_name, SUM(order_items.quantity) as units, SUM(order_items.line_total_paise) as revenue')
-            ->groupBy('order_items.product_name')
+            ->selectRaw('product_variants.product_id, MAX(order_items.product_name) as product_name, SUM(order_items.quantity) as units, SUM(order_items.line_total_paise) as revenue')
+            ->groupBy('product_variants.product_id')
             ->orderByDesc('units')
             ->limit(5)
             ->get();
@@ -396,9 +397,11 @@ new class extends Component {
                 <flux:heading>{{ __('Top products (30 days)') }}</flux:heading>
                 <ul class="divide-y divide-zinc-200 dark:divide-zinc-700">
                     @forelse ($this->topProducts as $row)
-                        <li class="flex justify-between py-2 text-sm">
-                            <span>{{ $row->product_name }}</span>
-                            <span class="text-zinc-500">{{ $row->units }} · {{ MoneyFormatter::format((int) $row->revenue) }}</span>
+                        <li>
+                            <a href="{{ route('admin.products.edit', ['product' => $row->product_id]) }}" wire:navigate class="flex justify-between gap-3 rounded py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                                <span class="underline-offset-2 hover:underline">{{ $row->product_name }}</span>
+                                <span class="text-zinc-500">{{ $row->units }} · {{ MoneyFormatter::format((int) $row->revenue) }}</span>
+                            </a>
                         </li>
                     @empty
                         <li class="py-2"><flux:text>{{ __('No sales yet.') }}</flux:text></li>
@@ -424,9 +427,11 @@ new class extends Component {
                 <flux:heading>{{ __('Low stock') }}</flux:heading>
                 <ul class="divide-y divide-zinc-200 dark:divide-zinc-700">
                     @forelse ($this->lowStockVariants as $variant)
-                        <li class="flex justify-between py-2 text-sm">
-                            <span>{{ $variant->product->name }} <span class="text-zinc-500">({{ $variant->sku }})</span></span>
-                            <span class="font-medium">{{ $variant->stock_quantity }}</span>
+                        <li>
+                            <a href="{{ route('admin.inventory.index', ['q' => $variant->sku]) }}" wire:navigate class="flex justify-between gap-3 rounded py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                                <span class="underline-offset-2 hover:underline">{{ $variant->product->name }} <span class="text-zinc-500">({{ $variant->sku }})</span></span>
+                                <span class="font-medium">{{ $variant->stock_quantity }}</span>
+                            </a>
                         </li>
                     @empty
                         <li class="py-2"><flux:text>{{ __('Nothing is running low.') }}</flux:text></li>

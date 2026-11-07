@@ -10,7 +10,14 @@
                     @endif
 
                     @if ($item['url'])
-                        <a href="{{ $item['url'] }}" wire:navigate class="hover:text-zinc-900 hover:underline dark:hover:text-white">{{ $item['label'] }}</a>
+                        <a href="{{ $item['url'] }}" wire:navigate class="hover:text-zinc-900 hover:underline dark:hover:text-white">
+                            @if (isset($item['icon']))
+                                <flux:icon :name="$item['icon']" class="size-4" />
+                                <span class="sr-only">{{ $item['label'] }}</span>
+                            @else
+                                {{ $item['label'] }}
+                            @endif
+                        </a>
                     @else
                         <span aria-current="page" class="font-medium text-zinc-800 dark:text-zinc-200">{{ $item['label'] }}</span>
                     @endif

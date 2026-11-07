@@ -35,6 +35,8 @@ new class extends Component {
 
     public string $status = 'draft';
 
+    public bool $cod_eligible = true;
+
     public string $scheduled_for = '';
 
     public string $deal_ends_at = '';
@@ -84,6 +86,7 @@ new class extends Component {
         if ($product === null) {
             Gate::authorize('products.create');
 
+            $this->cod_eligible = app(\App\Services\SettingsService::class)->bool('cod.products_eligible_by_default');
             $this->variants = [$this->blankVariant(isDefault: true)];
 
             return;
@@ -99,6 +102,7 @@ new class extends Component {
         $this->brand_id = $record->brand_id;
         $this->type = $record->type->value;
         $this->status = $record->status->value;
+        $this->cod_eligible = $record->cod_eligible;
         $this->scheduled_for = $record->scheduled_for?->format('Y-m-d\TH:i') ?? '';
         $this->deal_ends_at = $record->deal_ends_at?->format('Y-m-d\TH:i') ?? '';
         $this->short_description = (string) $record->short_description;
@@ -225,6 +229,7 @@ new class extends Component {
             'brand_id' => $this->brand_id,
             'type' => $this->type,
             'status' => $this->status,
+            'cod_eligible' => $this->cod_eligible,
             'scheduled_for' => $this->scheduled_for ?: null,
             'deal_ends_at' => $this->deal_ends_at ?: null,
             'short_description' => $this->short_description,
@@ -520,6 +525,7 @@ new class extends Component {
             'brand_id' => ['nullable', 'integer', 'exists:brands,id'],
             'type' => ['required', Rule::enum(ProductType::class)],
             'status' => ['required', Rule::enum(ProductStatus::class)],
+            'cod_eligible' => ['boolean'],
             'scheduled_for' => ['required_if:status,scheduled', 'nullable', 'date'],
             'deal_ends_at' => ['nullable', 'date', 'after:now'],
             'short_description' => ['nullable', 'string', 'max:500'],
@@ -739,6 +745,8 @@ new class extends Component {
                         @endforeach
                     </flux:select>
                 </flux:field>
+
+                <flux:switch wire:model="cod_eligible" :label="__('Cash on delivery available for this product')" />
 
                 @if ($status === ProductStatus::Scheduled->value)
                     <flux:field>

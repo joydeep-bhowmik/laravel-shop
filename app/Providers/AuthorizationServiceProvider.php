@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\AdminPermission;
 use App\Enums\AdminRole;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
@@ -26,9 +27,6 @@ class AuthorizationServiceProvider extends ServiceProvider
     {
         Gate::before(fn (User $user): ?bool => $user->hasRole(AdminRole::SuperAdmin->value) ? true : null);
 
-        Gate::define('admin.access', fn (User $user): bool => $user->hasAnyRole(array_map(
-            fn (AdminRole $role): string => $role->value,
-            AdminRole::cases(),
-        )));
+        Gate::define('admin.access', fn (User $user): bool => $user->hasAnyPermission(AdminPermission::values()));
     }
 }

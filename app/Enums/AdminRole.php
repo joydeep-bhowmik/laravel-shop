@@ -56,6 +56,7 @@ enum AdminRole: string
                 AdminPermission::OrdersView,
                 AdminPermission::OrdersUpdate,
                 AdminPermission::CustomersView,
+                AdminPermission::CustomersSupport,
                 AdminPermission::ReviewsModerate,
             ],
         };
