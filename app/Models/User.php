@@ -12,9 +12,6 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
-use Laravel\Fortify\Contracts\PasskeyUser;
-use Laravel\Fortify\PasskeyAuthenticatable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
 /**
@@ -23,10 +20,11 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $email
  * @property string|null $phone
  * @property bool $is_blocked
+ * @property string|null $google_id
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
- * @property string|null $two_factor_recovery_codes
+ * @property array<int, string>|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
  * @property Carbon|null $created_at
@@ -34,10 +32,10 @@ use Spatie\Permission\Traits\HasRoles;
  */
 #[Fillable(['name', 'email', 'phone', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -49,9 +47,19 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'two_factor_confirmed_at' => 'datetime',
             'is_blocked' => 'boolean',
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Whether two-factor sign-in is switched on for this account.
+     */
+    public function hasTwoFactorEnabled(): bool
+    {
+        return $this->two_factor_secret !== null && $this->two_factor_confirmed_at !== null;
     }
 
     /**

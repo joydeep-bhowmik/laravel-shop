@@ -2,64 +2,52 @@
 
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
-use Laravel\Fortify\Features;
+use Illuminate\Support\Facades\Password;
+use Livewire\Livewire;
 
-beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::resetPasswords());
-});
-
-test('reset password link screen can be rendered', function () {
-    $response = $this->get(route('password.request'));
-
-    $response->assertOk();
-});
-
-test('reset password link can be requested', function () {
+test('requesting a reset sends a link and says the same thing for unknown emails', function () {
     Notification::fake();
-
     $user = User::factory()->create();
 
-    $this->post(route('password.request'), ['email' => $user->email]);
+    Livewire::test('auth.forgot-password')
+        ->set('email', $user->email)
+        ->call('sendLink')
+        ->assertSet('sent', __('If that address has an account, a reset link is on its way.'));
 
     Notification::assertSentTo($user, ResetPassword::class);
+
+    Livewire::test('auth.forgot-password')
+        ->set('email', 'nobody@example.com')
+        ->call('sendLink')
+        ->assertHasNoErrors();
 });
 
-test('reset password screen can be rendered', function () {
-    Notification::fake();
-
+test('a valid token sets a new password', function () {
     $user = User::factory()->create();
+    $token = Password::createToken($user);
 
-    $this->post(route('password.request'), ['email' => $user->email]);
+    Livewire::test('auth.reset-password', ['token' => $token])
+        ->set('email', $user->email)
+        ->set('password', 'Brand-new-pass-1')
+        ->set('password_confirmation', 'Brand-new-pass-1')
+        ->call('resetPassword')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('login'));
 
-    Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-        $response = $this->get(route('password.reset', $notification->token));
-
-        $response->assertOk();
-
-        return true;
-    });
+    expect(Hash::check('Brand-new-pass-1', $user->fresh()->password))->toBeTrue();
 });
 
-test('password can be reset with valid token', function () {
-    Notification::fake();
-
+test('a bad token leaves the password alone', function () {
     $user = User::factory()->create();
 
-    $this->post(route('password.request'), ['email' => $user->email]);
+    Livewire::test('auth.reset-password', ['token' => 'not-a-real-token'])
+        ->set('email', $user->email)
+        ->set('password', 'Brand-new-pass-1')
+        ->set('password_confirmation', 'Brand-new-pass-1')
+        ->call('resetPassword')
+        ->assertHasErrors(['email']);
 
-    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
-        $response = $this->post(route('password.update'), [
-            'token' => $notification->token,
-            'email' => $user->email,
-            'password' => 'password',
-            'password_confirmation' => 'password',
-        ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('login', absolute: false));
-
-        return true;
-    });
+    expect(Hash::check('password', $user->fresh()->password))->toBeTrue();
 });

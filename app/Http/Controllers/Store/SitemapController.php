@@ -21,15 +21,15 @@ class SitemapController extends Controller
         ];
 
         foreach (Category::query()->active()->get(['slug', 'updated_at']) as $category) {
-            $urls[] = ['loc' => route('category', $category->slug), 'lastmod' => $category->updated_at];
+            $urls[] = ['loc' => route('category', ['category' => $category->slug]), 'lastmod' => $category->updated_at];
         }
 
         foreach (Brand::query()->active()->get(['slug', 'updated_at']) as $brand) {
-            $urls[] = ['loc' => route('brand', $brand->slug), 'lastmod' => $brand->updated_at];
+            $urls[] = ['loc' => route('brand', ['brand' => $brand->slug]), 'lastmod' => $brand->updated_at];
         }
 
         foreach (Product::query()->published()->get(['slug', 'updated_at']) as $product) {
-            $urls[] = ['loc' => route('product', $product->slug), 'lastmod' => $product->updated_at];
+            $urls[] = ['loc' => route('product', ['product' => $product->slug]), 'lastmod' => $product->updated_at];
         }
 
         $xml = view('sitemap', ['urls' => $urls])->render();

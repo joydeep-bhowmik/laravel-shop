@@ -8,7 +8,7 @@
 @endphp
 
 <article class="group flex flex-col" wire:key="card-{{ $product->id }}">
-    <a href="{{ route('product', $product->slug) }}" wire:navigate class="block overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+    <a href="{{ route('product', ['product' => $product->slug]) }}" wire:navigate class="block overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
         <img
             src="{{ $product->getFirstMediaUrl('gallery', 'thumb') ?: asset('images/placeholder-product.svg') }}"
             alt="{{ $product->name }}"
@@ -25,7 +25,7 @@
         @endif
 
         <h3 class="font-medium leading-snug">
-            <a href="{{ route('product', $product->slug) }}" wire:navigate class="hover:underline">{{ $product->name }}</a>
+            <a href="{{ route('product', ['product' => $product->slug]) }}" wire:navigate class="hover:underline">{{ $product->name }}</a>
         </h3>
 
         @if ($variant)

@@ -2,10 +2,10 @@
 
 use App\Providers\AppServiceProvider;
 use App\Providers\AuthorizationServiceProvider;
-use App\Providers\FortifyServiceProvider;
+use App\Providers\FolioServiceProvider;
 
 return [
     AppServiceProvider::class,
     AuthorizationServiceProvider::class,
-    FortifyServiceProvider::class,
+    FolioServiceProvider::class,
 ];

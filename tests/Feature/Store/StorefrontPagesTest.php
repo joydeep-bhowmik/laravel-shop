@@ -34,7 +34,7 @@ test('the category page lists products from its subcategories', function () {
     $product = Product::factory()->for($child, 'category')->create(['name' => 'Chanderi Saree Deluxe']);
     ProductVariant::factory()->default()->for($product)->create();
 
-    $this->get(route('category', 'women'))
+    $this->get(route('category', ['category' => 'women']))
         ->assertOk()
         ->assertSee('Chanderi Saree Deluxe');
 });
@@ -46,7 +46,7 @@ test('the brand page filters to that brand', function () {
     ProductVariant::factory()->default()->for($mine)->create();
     ProductVariant::factory()->default()->for($other)->create();
 
-    $this->get(route('brand', 'mehr-home'))
+    $this->get(route('brand', ['brand' => 'mehr-home']))
         ->assertOk()
         ->assertSee('Brass Vase')
         ->assertDontSee('Woven Basket');
@@ -76,14 +76,14 @@ test('the search page returns matching products for the query string', function 
 test('an unpublished product page is not found', function () {
     $draft = Product::factory()->draft()->create();
 
-    $this->get(route('product', $draft->slug))->assertNotFound();
+    $this->get(route('product', ['product' => $draft->slug]))->assertNotFound();
 });
 
 test('the product page renders with structured data and canonical link', function () {
     $product = Product::factory()->create(['name' => 'Khadi Kurta', 'status' => ProductStatus::Published]);
     ProductVariant::factory()->default()->for($product)->create(['price_paise' => 129900]);
 
-    $this->get(route('product', $product->slug))
+    $this->get(route('product', ['product' => $product->slug]))
         ->assertOk()
         ->assertSee('application/ld+json', false)
         ->assertSee('"@type":"Product"', false)
@@ -100,8 +100,8 @@ test('the sitemap lists public categories and products', function () {
 
     $response->assertOk()
         ->assertHeader('Content-Type', 'application/xml')
-        ->assertSee(route('category', $category->slug), false)
-        ->assertSee(route('product', $product->slug), false)
+        ->assertSee(route('category', ['category' => $category->slug]), false)
+        ->assertSee(route('product', ['product' => $product->slug]), false)
         ->assertDontSee('secret-draft');
 });
 
@@ -109,7 +109,7 @@ test('the header search box suggests matching products', function () {
     $product = Product::factory()->create(['name' => 'Terracotta Planter']);
     ProductVariant::factory()->default()->for($product)->create();
 
-    Livewire::test('pages::store.search-box')
+    Livewire::test('store.search-box')
         ->set('term', 'terracotta')
         ->assertSee('Terracotta Planter');
 });
@@ -125,7 +125,7 @@ test('choosing an option switches to the matching variant and its price', functi
     $largeVariant = ProductVariant::factory()->for($product)->create(['price_paise' => 109900, 'sku' => 'OX-L']);
     $largeVariant->attributeValues()->attach($large);
 
-    Livewire::test('pages::store.product', ['productSlug' => $product->slug])
+    Livewire::test('store.product', ['productId' => $product->id])
         ->assertSet('variantId', $mediumVariant->id)
         ->call('chooseOption', $size->id, $large->id)
         ->assertSet('variantId', $largeVariant->id)
@@ -137,7 +137,7 @@ test('the delivery check on the product page reports the estimated date', functi
     ProductVariant::factory()->default()->for($product)->create();
     Pincode::factory()->create(['code' => '411001', 'city' => 'Pune', 'state' => 'Maharashtra', 'delivery_days' => 4]);
 
-    Livewire::test('pages::store.product', ['productSlug' => $product->slug])
+    Livewire::test('store.product', ['productId' => $product->id])
         ->set('pincode', '411001')
         ->call('checkPincode')
         ->assertSee('Delivers to Pune, Maharashtra');
@@ -147,7 +147,7 @@ test('a guest submitting a review is sent to log in', function () {
     $product = Product::factory()->create();
     ProductVariant::factory()->default()->for($product)->create();
 
-    Livewire::test('pages::store.product', ['productSlug' => $product->slug])
+    Livewire::test('store.product', ['productId' => $product->id])
         ->set('reviewRating', 5)
         ->call('submitReview')
         ->assertRedirect(route('login'));
@@ -160,7 +160,7 @@ test('a signed-in customer review is saved for moderation', function () {
 
     $this->actingAs($customer);
 
-    Livewire::test('pages::store.product', ['productSlug' => $product->slug])
+    Livewire::test('store.product', ['productId' => $product->id])
         ->set('reviewRating', 4)
         ->set('reviewTitle', 'Solid buy')
         ->call('submitReview')
@@ -180,8 +180,8 @@ test('recently viewed products are remembered across pages', function () {
     ProductVariant::factory()->default()->for($first)->create();
     ProductVariant::factory()->default()->for($second)->create();
 
-    $this->get(route('product', $first->slug))->assertOk();
-    $this->get(route('product', $second->slug))
+    $this->get(route('product', ['product' => $first->slug]))->assertOk();
+    $this->get(route('product', ['product' => $second->slug]))
         ->assertOk()
         ->assertSee('Recently viewed')
         ->assertSee('First Viewed');

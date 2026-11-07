@@ -28,7 +28,7 @@ test('a manager can create a product with a variant through the form', function 
 
     $this->actingAs($manager);
 
-    Livewire::test('pages::admin.products.form')
+    Livewire::test('admin.products.form')
         ->set('name', 'Linen Shirt')
         ->set('category_id', $category->id)
         ->set('status', 'published')
@@ -60,7 +60,7 @@ test('the product form rejects a duplicate sku', function () {
 
     $this->actingAs($manager);
 
-    Livewire::test('pages::admin.products.form')
+    Livewire::test('admin.products.form')
         ->set('name', 'Another')
         ->set('category_id', $category->id)
         ->set('variants.0.sku', 'TAKEN-SKU')
@@ -76,7 +76,7 @@ test('a support user can move an order through the workflow from the order page'
 
     $this->actingAs($support);
 
-    Livewire::test('pages::admin.orders.show', ['order' => $order->id])
+    Livewire::test('admin.orders.show', ['order' => $order->id])
         ->call('moveTo', OrderStatus::Processing->value)
         ->assertHasNoErrors();
 
@@ -89,7 +89,7 @@ test('support cannot cancel an order because that needs orders.cancel', function
 
     $this->actingAs($support);
 
-    Livewire::test('pages::admin.orders.show', ['order' => $order->id])
+    Livewire::test('admin.orders.show', ['order' => $order->id])
         ->call('moveTo', OrderStatus::Cancelled->value);
 
     expect($order->fresh()->status)->toBe(OrderStatus::Paid);
@@ -101,7 +101,7 @@ test('saving settings stores the store name and keeps an existing secret when le
 
     $this->actingAs($admin);
 
-    Livewire::test('pages::admin.settings.index')
+    Livewire::test('admin.settings.index')
         ->set('storeName', 'Bazaar Bhai')
         ->set('storeState', 'Maharashtra')
         ->set('shippingFlatRupees', '49.00')

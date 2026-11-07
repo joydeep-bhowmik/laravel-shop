@@ -21,7 +21,7 @@ test('the product edit page renders for an existing product with its variants', 
     ProductVariant::factory()->default()->for($product)->create();
 
     $this->actingAs($this->superAdmin)
-        ->get(route('admin.products.edit', $product))
+        ->get(route('admin.products.edit', ['product' => $product]))
         ->assertOk()
         ->assertSee($product->name);
 });
@@ -30,7 +30,7 @@ test('the order detail page renders items and the status timeline', function () 
     $order = Order::factory()->paid()->create();
 
     $this->actingAs($this->superAdmin)
-        ->get(route('admin.orders.show', $order))
+        ->get(route('admin.orders.show', ['order' => $order]))
         ->assertOk()
         ->assertSee($order->order_number);
 });
@@ -42,7 +42,7 @@ test('dragging a category to a new position renumbers the list', function () {
 
     $this->actingAs($this->superAdmin);
 
-    Livewire::test('pages::admin.categories.index')
+    Livewire::test('admin.categories.index')
         ->call('reorder', $third->id, 0);
 
     expect(Category::query()->orderBy('position')->pluck('id')->all())
@@ -54,7 +54,7 @@ test('the inventory page shows movements for a selected variant', function () {
 
     $this->actingAs($this->superAdmin);
 
-    Livewire::test('pages::admin.inventory.index')
+    Livewire::test('admin.inventory.index')
         ->call('showHistory', $variant->id)
         ->assertSet('historyVariantId', $variant->id);
 });

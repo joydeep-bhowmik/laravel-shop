@@ -45,14 +45,13 @@
                     </flux:sidebar.group>
                 @endcan
 
-                @can('reviews.moderate')
-                    <flux:sidebar.item icon="star" :href="route('admin.reviews.index')" :current="request()->routeIs('admin.reviews.*')" wire:navigate>
-                        {{ __('Reviews') }}
-                    </flux:sidebar.item>
-                @endcan
-
-                @canany(['settings.manage', 'activity.view'])
-                    <flux:sidebar.group :heading="__('Store')" class="grid">
+                @canany(['reviews.moderate', 'settings.manage', 'activity.view'])
+                    <flux:sidebar.group :heading="__('Administration')" class="grid">
+                        @can('reviews.moderate')
+                            <flux:sidebar.item icon="star" :href="route('admin.reviews.index')" :current="request()->routeIs('admin.reviews.*')" wire:navigate>
+                                {{ __('Reviews') }}
+                            </flux:sidebar.item>
+                        @endcan
                         @can('settings.manage')
                             <flux:sidebar.item icon="cog-6-tooth" :href="route('admin.settings.index')" :current="request()->routeIs('admin.settings.*')" wire:navigate>
                                 {{ __('Settings') }}
