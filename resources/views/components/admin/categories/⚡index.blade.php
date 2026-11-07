@@ -3,7 +3,8 @@
 use App\Models\Category;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
-use Livewire\Attributes\Computed;
+use Livewire\Attributes\Computed;
+
 use Livewire\Component;
 
 new class extends Component {
@@ -172,7 +173,7 @@ new class extends Component {
                     <flux:table.cell>
                         <div class="flex justify-end gap-2">
                             <flux:button size="xs" wire:click="edit({{ $category->id }})">{{ __('Edit') }}</flux:button>
-                            <flux:button size="xs" variant="danger" wire:click="delete({{ $category->id }})" wire:confirm="{{ __('Delete this category?') }}">{{ __('Delete') }}</flux:button>
+                            <x-confirm-button name="confirm-category-{{ $category->id }}" size="xs" :label="__('Delete')" action="delete({{ $category->id }})" :message="__('Delete this category?')" />
                         </div>
                     </flux:table.cell>
                 </flux:table.row>

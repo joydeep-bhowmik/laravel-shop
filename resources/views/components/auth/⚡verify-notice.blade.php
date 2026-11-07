@@ -46,9 +46,6 @@ new class extends Component {
 
     <div class="flex items-center gap-3">
         <flux:button wire:click="resend" variant="primary">{{ __('Resend verification email') }}</flux:button>
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <flux:button type="submit" variant="ghost">{{ __('Log out') }}</flux:button>
-        </form>
+        <flux:button variant="ghost" x-on:click="$flux.modal('confirm-logout').show()">{{ __('Log out') }}</flux:button>
     </div>
 </div>

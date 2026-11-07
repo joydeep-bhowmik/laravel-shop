@@ -50,10 +50,7 @@
                                     <a href="{{ route('admin.home') }}" role="menuitem" class="block px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700">{{ __('Admin panel') }}</a>
                                 @endcan
                                 <div class="my-1 border-t border-zinc-200 dark:border-zinc-700"></div>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" role="menuitem" class="block w-full px-4 py-2 text-start text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700">{{ __('Log out') }}</button>
-                                </form>
+                                <button type="button" role="menuitem" class="block w-full px-4 py-2 text-start text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700" x-on:click="$flux.modal('confirm-logout').show()">{{ __('Log out') }}</button>
                             </div>
                         </div>
                     @else
@@ -78,10 +75,7 @@
                 <div class="border-t border-zinc-200 pt-3 text-sm dark:border-zinc-800">
                     @auth
                         <a href="{{ route('dashboard') }}" wire:navigate class="block py-1">{{ __('My account') }}</a>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit" class="block py-1 text-start">{{ __('Log out') }}</button>
-                        </form>
+                        <button type="button" class="block py-1 text-start" x-on:click="$flux.modal('confirm-logout').show()">{{ __('Log out') }}</button>
                     @else
                         <a href="{{ route('login') }}" wire:navigate class="block py-1">{{ __('Log in') }}</a>
                         <a href="{{ route('register') }}" wire:navigate class="block py-1">{{ __('Create account') }}</a>
@@ -117,6 +111,8 @@
                 <p class="text-zinc-500 lg:text-end">&copy; {{ date('Y') }} {{ config('app.name') }}. {{ __('Prices include GST.') }}</p>
             </div>
         </footer>
+
+        <x-confirm-logout />
 
         @persist('toast')
             <flux:toast.group>

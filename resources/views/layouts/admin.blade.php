@@ -101,6 +101,8 @@
             </div>
         </flux:main>
 
+        <x-confirm-logout />
+
         @persist('toast')
             <flux:toast.group>
                 <flux:toast />

@@ -702,11 +702,11 @@ new class extends Component {
                                             @if ($image['pending'])
                                                 <span class="absolute bottom-1 start-1 rounded bg-amber-500 px-1 text-[10px] font-medium text-black">{{ __('Not saved') }}</span>
                                             @endif
-                                            <button type="button"
-                                                wire:click="removeVariantImage('{{ $variant['key'] }}', '{{ $image['key'] }}')"
-                                                @unless ($image['pending']) wire:confirm="{{ __('Delete this image from the variant?') }}" @endunless
-                                                aria-label="{{ __('Remove image') }}"
-                                                class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-sm leading-none text-red-700 hover:bg-white">&times;</button>
+                                            @if ($image['pending'])
+                                                <button type="button" wire:click="removeVariantImage('{{ $variant['key'] }}', '{{ $image['key'] }}')" aria-label="{{ __('Remove image') }}" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-sm leading-none text-red-700 hover:bg-white">&times;</button>
+                                            @else
+                                                <x-confirm-button name="confirm-variant-image-{{ $variant['key'] }}-{{ $image['key'] }}" :label="'×'" trigger-variant="ghost" trigger-class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-sm leading-none text-red-700 hover:bg-white" :title="__('Delete image?')" action="removeVariantImage('{{ $variant['key'] }}', '{{ $image['key'] }}')" :message="__('Delete this image from the variant?')" />
+                                            @endif
                                         </li>
                                     @endforeach
                                 </ul>
@@ -827,11 +827,11 @@ new class extends Component {
                                 @if ($image['pending'])
                                     <span class="absolute bottom-1 start-1 rounded bg-amber-500 px-1.5 text-xs font-medium text-black">{{ __('Not saved') }}</span>
                                 @endif
-                                <button type="button"
-                                    wire:click="removeImage('{{ $image['key'] }}')"
-                                    @unless ($image['pending']) wire:confirm="{{ __('Delete this image from the product?') }}" @endunless
-                                    aria-label="{{ __('Remove image') }}"
-                                    class="absolute end-1 top-1 rounded-full bg-white/90 px-2 py-0.5 text-sm leading-none text-red-700 hover:bg-white">&times;</button>
+                                @if ($image['pending'])
+                                    <button type="button" wire:click="removeImage('{{ $image['key'] }}')" aria-label="{{ __('Remove image') }}" class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-sm leading-none text-red-700 hover:bg-white">&times;</button>
+                                @else
+                                    <x-confirm-button name="confirm-product-image-{{ $image['key'] }}" :label="'×'" trigger-variant="ghost" trigger-class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-sm leading-none text-red-700 hover:bg-white" :title="__('Delete image?')" action="removeImage('{{ $image['key'] }}')" :message="__('Delete this image from the product?')" />
+                                @endif
                             </li>
                         @endforeach
                     </ul>

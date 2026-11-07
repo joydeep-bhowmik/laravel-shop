@@ -12,6 +12,9 @@ use Livewire\WithPagination;
 new class extends Component {
     use WithPagination;
 
+    /** @var array<int, string> */
+    public array $selected = [];
+
     #[Url(except: 'pending')]
     public string $state = 'pending';
 
@@ -29,6 +32,50 @@ new class extends Component {
     public function updatedState(): void
     {
         $this->resetPage();
+    }
+
+    /**
+     * Select every review on this page, or clear the selection when they are all selected.
+     */
+    public function toggleAll(): void
+    {
+        $pageIds = $this->reviews->getCollection()->pluck('id')->map(fn ($id): string => (string) $id)->all();
+
+        $this->selected = $this->allOnPageSelected ? [] : $pageIds;
+    }
+
+    #[Computed]
+    public function allOnPageSelected(): bool
+    {
+        $pageIds = $this->reviews->getCollection()->pluck('id')->map(fn ($id): string => (string) $id)->all();
+
+        return $pageIds !== [] && count(array_intersect($pageIds, array_map('strval', $this->selected))) === count($pageIds);
+    }
+
+    public function bulkApprove(ReviewService $reviews): void
+    {
+        Gate::authorize('reviews.moderate');
+
+        foreach (ProductReview::query()->whereIn('id', array_map('intval', $this->selected))->where('is_approved', false)->get() as $review) {
+            $reviews->approve($review);
+        }
+
+        $this->reset('selected');
+        unset($this->reviews);
+        Flux::toast(variant: 'success', text: __('Selected reviews approved.'));
+    }
+
+    public function bulkRemove(ReviewService $reviews): void
+    {
+        Gate::authorize('reviews.moderate');
+
+        foreach (ProductReview::query()->whereIn('id', array_map('intval', $this->selected))->get() as $review) {
+            $reviews->delete($review);
+        }
+
+        $this->reset('selected');
+        unset($this->reviews);
+        Flux::toast(variant: 'success', text: __('Selected reviews removed.'));
     }
 
     public function approve(int $id, ReviewService $reviews): void
@@ -58,8 +105,19 @@ new class extends Component {
         </select>
     </div>
 
+    @if ($selected !== [])
+        <div class="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+            <flux:button variant="primary" wire:click="bulkApprove">{{ __('Approve selected') }}</flux:button>
+            <x-confirm-button name="confirm-bulk-reviews" :label="__('Remove selected')" action="bulkRemove" :message="__('Remove the selected reviews?')" />
+            <flux:text>{{ trans_choice(':count selected|:count selected', count($selected), ['count' => count($selected)]) }}</flux:text>
+        </div>
+    @endif
+
     <flux:table :paginate="$this->reviews">
         <flux:table.columns>
+            <flux:table.column>
+                <input type="checkbox" wire:click="toggleAll" @checked($this->allOnPageSelected) class="rounded border-zinc-300" aria-label="{{ __('Select all on this page') }}">
+            </flux:table.column>
             <flux:table.column>{{ __('Product') }}</flux:table.column>
             <flux:table.column>{{ __('Customer') }}</flux:table.column>
             <flux:table.column>{{ __('Review') }}</flux:table.column>
@@ -70,6 +128,9 @@ new class extends Component {
         <flux:table.rows>
             @forelse ($this->reviews as $review)
                 <flux:table.row wire:key="review-{{ $review->id }}">
+                    <flux:table.cell>
+                        <input type="checkbox" value="{{ $review->id }}" wire:model="selected" class="rounded border-zinc-300" aria-label="{{ __('Select review') }}">
+                    </flux:table.cell>
                     <flux:table.cell>{{ $review->product->name }}</flux:table.cell>
                     <flux:table.cell>{{ $review->user->name }}</flux:table.cell>
                     <flux:table.cell class="max-w-md">
@@ -84,13 +145,13 @@ new class extends Component {
                             @unless ($review->is_approved)
                                 <flux:button size="xs" variant="primary" wire:click="approve({{ $review->id }})">{{ __('Approve') }}</flux:button>
                             @endunless
-                            <flux:button size="xs" variant="danger" wire:click="remove({{ $review->id }})" wire:confirm="{{ __('Remove this review?') }}">{{ __('Remove') }}</flux:button>
+                            <x-confirm-button name="confirm-review-{{ $review->id }}" size="xs" :label="__('Remove')" action="remove({{ $review->id }})" :message="__('Remove this review?')" />
                         </div>
                     </flux:table.cell>
                 </flux:table.row>
             @empty
                 <flux:table.row>
-                    <flux:table.cell colspan="5"><flux:text>{{ __('Nothing to moderate.') }}</flux:text></flux:table.cell>
+                    <flux:table.cell colspan="6"><flux:text>{{ __('Nothing to moderate.') }}</flux:text></flux:table.cell>
                 </flux:table.row>
             @endforelse
         </flux:table.rows>

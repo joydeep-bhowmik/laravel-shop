@@ -5,7 +5,8 @@ use App\Models\AttributeValue;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Livewire\Attributes\Computed;
+use Livewire\Attributes\Computed;
+
 use Livewire\Component;
 
 new class extends Component {
@@ -162,7 +163,7 @@ new class extends Component {
                             <div class="flex justify-end gap-2">
                                 <flux:button size="xs" wire:click="select({{ $attribute->id }})">{{ __('Values') }}</flux:button>
                                 <flux:button size="xs" wire:click="edit({{ $attribute->id }})">{{ __('Edit') }}</flux:button>
-                                <flux:button size="xs" variant="danger" wire:click="delete({{ $attribute->id }})" wire:confirm="{{ __('Delete this attribute and its values?') }}">{{ __('Delete') }}</flux:button>
+                                <x-confirm-button name="confirm-attribute-{{ $attribute->id }}" size="xs" :label="__('Delete')" action="delete({{ $attribute->id }})" :message="__('Delete this attribute and its values?')" />
                             </div>
                         </flux:table.cell>
                     </flux:table.row>
@@ -185,7 +186,7 @@ new class extends Component {
                             @endif
                             {{ $value->value }}
                         </span>
-                        <flux:button size="xs" variant="danger" wire:click="removeValue({{ $value->id }})" wire:confirm="{{ __('Remove this value?') }}">{{ __('Remove') }}</flux:button>
+                        <x-confirm-button name="confirm-value-{{ $value->id }}" size="xs" :label="__('Remove')" action="removeValue({{ $value->id }})" :message="__('Remove this value?')" />
                     </li>
                 @empty
                     <li class="py-2"><flux:text>{{ __('No values yet.') }}</flux:text></li>

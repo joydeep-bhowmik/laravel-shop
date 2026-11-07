@@ -76,6 +76,24 @@ new class extends Component {
         $this->resetPage();
     }
 
+    /**
+     * Select every product on the current page, or clear the selection if they are all selected.
+     */
+    public function toggleAll(): void
+    {
+        $pageIds = $this->products->getCollection()->pluck('id')->map(fn ($id): string => (string) $id)->all();
+
+        $this->selected = $this->allOnPageSelected ? [] : $pageIds;
+    }
+
+    #[Computed]
+    public function allOnPageSelected(): bool
+    {
+        $pageIds = $this->products->getCollection()->pluck('id')->map(fn ($id): string => (string) $id)->all();
+
+        return $pageIds !== [] && count(array_intersect($pageIds, array_map('strval', $this->selected))) === count($pageIds);
+    }
+
     public function applyBulkAction(): void
     {
         $ids = array_map('intval', $this->selected);
@@ -193,14 +211,16 @@ new class extends Component {
                         <flux:select.option value="delete">{{ __('Move to trash') }}</flux:select.option>
                     @endcan
                 </flux:select>
-                <flux:button wire:click="applyBulkAction" wire:confirm="{{ __('Apply this action to the selected products?') }}">{{ __('Apply') }}</flux:button>
+                <x-confirm-button name="confirm-bulk-products" variant="primary" :label="__('Apply')" action="applyBulkAction" :message="__('Apply this action to the selected products?')" />
                 <flux:text>{{ trans_choice(':count selected|:count selected', count($selected), ['count' => count($selected)]) }}</flux:text>
             </div>
         @endcan
 
         <flux:table :paginate="$this->products">
             <flux:table.columns>
-                <flux:table.column></flux:table.column>
+                <flux:table.column>
+                    <input type="checkbox" wire:click="toggleAll" @checked($this->allOnPageSelected) class="rounded border-zinc-300" aria-label="{{ __('Select all on this page') }}">
+                </flux:table.column>
                 <flux:table.column>{{ __('Product') }}</flux:table.column>
                 <flux:table.column>{{ __('Category') }}</flux:table.column>
                 <flux:table.column>{{ __('Price') }}</flux:table.column>
@@ -233,7 +253,7 @@ new class extends Component {
                                     <flux:button size="xs" :href="route('admin.products.edit', ['product' => $product])" wire:navigate>{{ __('Edit') }}</flux:button>
                                 @endcan
                                 @can('products.delete')
-                                    <flux:button size="xs" variant="danger" wire:click="deleteProduct({{ $product->id }})" wire:confirm="{{ __('Move this product to trash?') }}">{{ __('Delete') }}</flux:button>
+                                    <x-confirm-button name="confirm-product-{{ $product->id }}" size="xs" :label="__('Delete')" action="deleteProduct({{ $product->id }})" :message="__('Move this product to trash?')" />
                                 @endcan
                             </div>
                         </flux:table.cell>

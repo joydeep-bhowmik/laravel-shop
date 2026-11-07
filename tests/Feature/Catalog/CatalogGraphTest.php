@@ -16,7 +16,7 @@ use Illuminate\Support\Carbon;
 test('a variable product exposes its default variant and selectable options', function () {
     $product = Product::factory()->variable()->create();
     $size = AttributeValue::factory()->for(Attribute::factory()->variant()->create(['name' => 'Size']), 'attribute')->create(['value' => 'M']);
-    $default = ProductVariant::factory()->default()->for($product)->create();
+    $default = ProductVariant::factory()->default()->for($product)->create(['stock_quantity' => 5]);
     $default->attributeValues()->attach($size);
     ProductVariant::factory()->for($product)->outOfStock()->create();
 

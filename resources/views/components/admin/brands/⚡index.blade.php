@@ -3,7 +3,8 @@
 use App\Models\Brand;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
-use Livewire\Attributes\Computed;
+use Livewire\Attributes\Computed;
+
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -110,7 +111,7 @@ new class extends Component {
                     <flux:table.cell>
                         <div class="flex justify-end gap-2">
                             <flux:button size="xs" wire:click="edit({{ $brand->id }})">{{ __('Edit') }}</flux:button>
-                            <flux:button size="xs" variant="danger" wire:click="delete({{ $brand->id }})" wire:confirm="{{ __('Delete this brand?') }}">{{ __('Delete') }}</flux:button>
+                            <x-confirm-button name="confirm-brand-{{ $brand->id }}" size="xs" :label="__('Delete')" action="delete({{ $brand->id }})" :message="__('Delete this brand?')" />
                         </div>
                     </flux:table.cell>
                 </flux:table.row>

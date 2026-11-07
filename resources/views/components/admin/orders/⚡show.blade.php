@@ -165,11 +165,7 @@ new class extends Component {
                     <div class="flex flex-wrap gap-2">
                         @forelse ($this->nextStatuses as $next)
                             @if ($next !== OrderStatus::Cancelled || Gate::allows('orders.cancel'))
-                                <flux:button size="sm" :variant="$next === OrderStatus::Cancelled ? 'danger' : 'primary'"
-                                    wire:click="moveTo('{{ $next->value }}')"
-                                    wire:confirm="{{ __('Move this order to :status?', ['status' => $next->label()]) }}">
-                                    {{ $next->label() }}
-                                </flux:button>
+                                <x-confirm-button name="confirm-status-{{ $next->value }}" size="sm" :variant="$next === OrderStatus::Cancelled ? 'danger' : 'primary'" :label="$next->label()" action="moveTo('{{ $next->value }}')" :message="__('Move this order to :status?', ['status' => $next->label()])" />
                             @endif
                         @empty
                             <flux:text>{{ __('No further status changes are possible.') }}</flux:text>

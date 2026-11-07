@@ -23,18 +23,7 @@
             <flux:menu.item :href="route('account.profile')" icon="cog" wire:navigate>
                 {{ __('Settings') }}
             </flux:menu.item>
-            <form method="POST" action="{{ route('logout') }}" class="w-full">
-                @csrf
-                <flux:menu.item
-                    as="button"
-                    type="submit"
-                    icon="arrow-right-start-on-rectangle"
-                    class="w-full cursor-pointer"
-                    data-test="logout-button"
-                >
-                    {{ __('Log out') }}
-                </flux:menu.item>
-            </form>
+            <flux:menu.item as="button" icon="arrow-right-start-on-rectangle" class="w-full cursor-pointer" data-test="logout-button" x-on:click="$flux.modal('confirm-logout').show()">{{ __('Log out') }}</flux:menu.item>
         </flux:menu.radio.group>
     </flux:menu>
 </flux:dropdown>
