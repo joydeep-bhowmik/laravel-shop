@@ -32,7 +32,7 @@ touch database/database.sqlite
 
 # Set the admin login before seeding (see "Admin login" below)
 # ADMIN_EMAIL=admin@example.com
-# ADMIN_PASSWORD=Admin-Example-123!
+# ADMIN_PASSWORD=password
 
 php artisan migrate --seed    # creates tables, roles, the admin account and demo catalog
 npm install
@@ -56,12 +56,23 @@ php artisan migrate:fresh --seed
 
 The seeder creates one super admin from `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
-| Field    | Example value           |
-|----------|-------------------------|
-| Email    | `admin@example.com`     |
-| Password | `Admin-Example-123!`    |
+| Field    | Value               |
+|----------|---------------------|
+| Email    | `admin@example.com` |
+| Password | `password`          |
 
-These are example values for local development only. Set your own `ADMIN_PASSWORD` in `.env` before running `migrate --seed`. If `ADMIN_PASSWORD` is left blank, the seeder generates a random password and prints it once in the seed output. Change the password after first login, and never use the example password on a public server.
+These are local development values. Set `ADMIN_PASSWORD` in `.env` to your own value before seeding, or leave it blank to get a random password printed once in the seed output. Never use `password` on a public server.
+
+### How to sign in to the admin panel
+
+1. Start the app (`php artisan serve`) and open http://127.0.0.1:8000/login.
+2. Enter `admin@example.com` and `password`, then click **Log in**.
+3. Open http://127.0.0.1:8000/admin. Staff are sent here automatically after login.
+4. Use the sidebar to manage products, inventory, orders, categories, brands, attributes, reviews, settings and the activity log.
+
+The admin panel uses the same login page as customers. Admin pages are only shown to accounts with a staff role. A customer account that opens `/admin` gets a 403 error.
+
+To change the password, sign in and open **Password and two-factor** from the account menu.
 
 Other roles (`admin`, `manager`, `support`) are defined in `App\Enums\AdminRole`. Assign them to users with the role tools in the admin panel or with `User::assignRole()`.
 

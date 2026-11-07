@@ -64,3 +64,27 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+/* Trix (rich text editor) toolbar and text in dark mode */
+.dark trix-toolbar .trix-button-group {
+    border-color: #52525b;
+    background-color: #27272a;
+}
+
+.dark trix-toolbar .trix-button--icon::before {
+    filter: invert(1);
+}
+
+.dark trix-toolbar .trix-button.trix-active {
+    background-color: #52525b;
+}
+
+.dark trix-editor {
+    color: #f4f4f5;
+}
+
+.dark trix-editor blockquote,
+.dark trix-editor pre {
+    color: #d4d4d8;
+    border-color: #52525b;
+}

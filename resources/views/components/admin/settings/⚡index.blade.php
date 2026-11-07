@@ -29,6 +29,8 @@ new class extends Component {
 
     public bool $authRequireVerification = false;
 
+    public bool $darkMode = true;
+
     public string $codMaxOrderRupees = '';
 
     public string $razorpayMode = 'test';
@@ -64,6 +66,7 @@ new class extends Component {
         $this->shippingStandardDays = $settings->int('shipping.standard_days');
         $this->codEnabled = $settings->bool('cod.enabled');
         $this->authRequireVerification = $settings->bool('auth.require_email_verification');
+        $this->darkMode = $settings->bool('appearance.dark_mode');
         $this->codMaxOrderRupees = number_format($settings->int('cod.max_order_paise') / 100, 2, '.', '');
         $this->razorpayMode = (string) $settings->get('razorpay.mode');
         $this->razorpayKeyId = (string) $settings->get('razorpay.key_id');
@@ -107,6 +110,7 @@ new class extends Component {
         $settings->set('shipping.standard_days', (string) $validated['shippingStandardDays']);
         $settings->set('cod.enabled', $this->codEnabled ? '1' : '0');
         $settings->set('auth.require_email_verification', $this->authRequireVerification ? '1' : '0');
+        $settings->set('appearance.dark_mode', $this->darkMode ? '1' : '0');
         $settings->set('cod.max_order_paise', (string) \App\Services\MoneyFormatter::toPaise($validated['codMaxOrderRupees']));
         $settings->set('razorpay.mode', $validated['razorpayMode']);
         $settings->set('razorpay.key_id', $validated['razorpayKeyId'] ?? '');
@@ -196,6 +200,12 @@ new class extends Component {
             <flux:heading>{{ __('Accounts') }}</flux:heading>
             <flux:switch wire:model="authRequireVerification" :label="__('Require email verification before account pages')" />
             <flux:description>{{ __('Off by default. Customers can always shop; verification is then only requested for account pages.') }}</flux:description>
+        </flux:card>
+
+        <flux:card class="space-y-4">
+            <flux:heading>{{ __('Appearance') }}</flux:heading>
+            <flux:switch wire:model="darkMode" :label="__('Allow dark mode')" />
+            <flux:description>{{ __('Shows a sun and moon toggle in the header. Visitors choose their own theme. When off, every page uses light mode.') }}</flux:description>
         </flux:card>
 
         <flux:card class="space-y-4">

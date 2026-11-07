@@ -407,8 +407,8 @@ new class extends Component {
                 @endif
             </section>
 
-            <div class="prose prose-zinc max-w-none text-sm dark:prose-invert">
-                {!! nl2br(e($product->description)) !!}
+            <div class="space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300 [&_a]:underline [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:ps-5 [&_ul]:list-disc [&_ul]:ps-5 [&_blockquote]:border-s-4 [&_blockquote]:ps-4">
+                {!! $product->description !!}
             </div>
         </section>
     </div>

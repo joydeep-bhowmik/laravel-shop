@@ -1,7 +1,8 @@
+@php($darkMode = app(\App\Services\SettingsService::class)->bool('appearance.dark_mode'))
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @if ($darkMode) x-data x-bind:class="$flux.dark ? 'dark' : ''" @endif>
     <head>
-        @include('partials.head')
+        @include('partials.head', ['darkMode' => $darkMode])
 
         @isset($metaDescription)
             <meta name="description" content="{{ $metaDescription }}">
@@ -29,6 +30,10 @@
 
                 <div class="ms-auto flex flex-1 items-center justify-end gap-4 lg:flex-none">
                     <livewire:store.search-box />
+
+                    @if ($darkMode)
+                        <x-theme-toggle />
+                    @endif
 
                     @auth
                         <div class="relative hidden lg:block" x-data="{ open: false }" x-on:click.outside="open = false" x-on:keydown.escape="open = false">

@@ -33,6 +33,7 @@ class SettingsService
             'razorpay.key_id' => ['group' => 'razorpay', 'default' => '', 'encrypted' => false],
             'razorpay.key_secret' => ['group' => 'razorpay', 'default' => '', 'encrypted' => true],
             'razorpay.webhook_secret' => ['group' => 'razorpay', 'default' => '', 'encrypted' => true],
+            'appearance.dark_mode' => ['group' => 'appearance', 'default' => '1', 'encrypted' => false],
             'auth.require_email_verification' => ['group' => 'auth', 'default' => '0', 'encrypted' => false],
             'email.from_name' => ['group' => 'email', 'default' => 'Our Store', 'encrypted' => false],
             'email.from_address' => ['group' => 'email', 'default' => 'hello@example.com', 'encrypted' => false],

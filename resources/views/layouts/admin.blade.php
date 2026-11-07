@@ -1,7 +1,8 @@
+@php($darkMode = app(\App\Services\SettingsService::class)->bool('appearance.dark_mode'))
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @if ($darkMode) x-data x-bind:class="$flux.dark ? 'dark' : ''" @endif>
     <head>
-        @include('partials.head')
+        @include('partials.head', ['darkMode' => $darkMode])
     </head>
     <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
@@ -74,22 +75,31 @@
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 
+            @if ($darkMode)
+                <div class="hidden px-3 pb-2 lg:block"><x-theme-toggle /></div>
+            @endif
             <x-desktop-user-menu class="hidden lg:block" />
         </flux:sidebar>
 
         <flux:header class="lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
             <flux:spacer />
+            @if ($darkMode)
+                <x-theme-toggle />
+            @endif
             <x-desktop-user-menu />
         </flux:header>
 
-        <main class="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
-            @if (filled($title ?? null))
-                <flux:heading size="xl" class="mb-6">{{ $title }}</flux:heading>
-            @endif
+        <flux:main>
+            <div class="mx-auto w-full max-w-7xl">
+                <x-admin.breadcrumbs />
+                @if (filled($title ?? null))
+                    <flux:heading size="xl" class="mb-6">{{ $title }}</flux:heading>
+                @endif
 
-            {{ $slot }}
-        </main>
+                {{ $slot }}
+            </div>
+        </flux:main>
 
         @persist('toast')
             <flux:toast.group>

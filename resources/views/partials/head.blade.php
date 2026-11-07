@@ -12,5 +12,7 @@
 @fonts
 
 @vite(['resources/css/app.css', 'resources/js/app.js'])
+@if ($darkMode ?? false)
 @fluxAppearance
+@endif
 @stack('head')

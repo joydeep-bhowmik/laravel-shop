@@ -61,11 +61,23 @@ new class extends Component {
      */
     public array $variants = [];
 
-    /** @var array<int, mixed> */
-    public array $newImages = [];
+    /** Files picked in the gallery picker, moved into pendingImages as they arrive. @var array<int, mixed> */
+    public array $uploads = [];
 
-    /** @var array<string, mixed> */
-    public array $variantImages = [];
+    /** Images chosen but not saved yet, keyed like the gallery order. @var array<string, mixed> */
+    public array $pendingImages = [];
+
+    /** Gallery order: "m{mediaId}" for saved images, "p{random}" for pending ones. @var array<int, string> */
+    public array $galleryOrder = [];
+
+    /** Files picked per variant row, moved into variantPending as they arrive. @var array<string, array<int, mixed>> */
+    public array $variantUploads = [];
+
+    /** Variant images chosen but not saved yet: rowKey => (pendingKey => file). @var array<string, array<string, mixed>> */
+    public array $variantPending = [];
+
+    /** Variant image order: rowKey => keys ("m{mediaId}" saved, "p{random}" pending). @var array<string, array<int, string>> */
+    public array $variantOrder = [];
 
     public function mount(?int $product = null): void
     {
@@ -96,6 +108,10 @@ new class extends Component {
         $this->hsn_code = (string) $record->hsn_code;
         $this->gst_rate = $record->gst_rate;
         $this->attributeValueIds = $record->attributeValues->pluck('id')->all();
+        $this->galleryOrder = $this->savedGalleryKeys($record);
+        $this->variantOrder = $record->variants
+            ->mapWithKeys(fn (ProductVariant $variant) => [(string) $variant->id => $this->savedImageKeys($variant)])
+            ->all();
 
         $this->variants = $record->variants->map(fn (ProductVariant $variant): array => [
             'key' => (string) $variant->id,
@@ -144,12 +160,33 @@ new class extends Component {
             ->groupBy(fn (AttributeValue $value): string => $value->attribute->name);
     }
 
+    /**
+     * Images in display order, saved and pending together.
+     *
+     * @return array<int, array{key: string, src: string, pending: bool, id: ?int}>
+     */
     #[Computed]
-    public function gallery()
+    public function gallery(): array
     {
-        return $this->productId === null
+        $saved = $this->productId === null
             ? collect()
-            : Product::query()->findOrFail($this->productId)->getMedia('gallery');
+            : Product::query()->findOrFail($this->productId)->getMedia('gallery')->keyBy(fn ($media) => 'm'.$media->id);
+
+        return collect($this->galleryOrder)
+            ->map(function (string $key) use ($saved): ?array {
+                if (str_starts_with($key, 'p')) {
+                    $file = $this->pendingImages[$key] ?? null;
+
+                    return $file === null ? null : ['key' => $key, 'src' => $file->temporaryUrl(), 'pending' => true, 'id' => null];
+                }
+
+                $media = $saved->get($key);
+
+                return $media === null ? null : ['key' => $key, 'src' => $media->getUrl('thumb'), 'pending' => false, 'id' => $media->id];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function addVariant(): void
@@ -163,6 +200,8 @@ new class extends Component {
             return;
         }
 
+        $rowKey = $this->variants[$index]['key'];
+        unset($this->variantUploads[$rowKey], $this->variantPending[$rowKey], $this->variantOrder[$rowKey]);
         unset($this->variants[$index]);
         $this->variants = array_values($this->variants);
     }
@@ -228,37 +267,228 @@ new class extends Component {
         }
 
         $this->mount($saved->id);
-        $this->newImages = [];
-        $this->variantImages = [];
+        $this->pendingImages = [];
+        $this->uploads = [];
+        $this->variantUploads = [];
+        $this->variantPending = [];
         unset($this->gallery);
 
         Flux::toast(variant: 'success', text: __('Product saved.'));
     }
 
-    public function reorderGallery(int $id, int $position): void
+    /**
+     * Pick up files from the gallery picker. They join the gallery as pending images until the product is saved.
+     */
+    public function updatedUploads(): void
     {
-        Gate::authorize('products.update');
+        $this->validate(['uploads.*' => ['image', 'max:5120']]);
 
-        $ids = $this->gallery->sortBy('order_column')->pluck('id')->map(fn ($mediaId): int => (int) $mediaId)->all();
-        $ids = array_values(array_filter($ids, fn (int $mediaId): bool => $mediaId !== $id));
-        array_splice($ids, $position, 0, [$id]);
+        foreach ($this->uploads as $file) {
+            $key = 'p'.Str::random(8);
+            $this->pendingImages[$key] = $file;
+            $this->galleryOrder[] = $key;
+        }
 
-        Media::setNewOrder($ids);
+        $this->reset('uploads');
         unset($this->gallery);
     }
 
-    public function deleteImage(int $mediaId): void
+    /**
+     * Drag and drop reorder from wire:sort. The order is written when the product is saved.
+     */
+    public function reorderGallery(string $key, int $position): void
     {
-        Gate::authorize('products.update');
+        $order = array_values(array_filter($this->galleryOrder, fn (string $item): bool => $item !== $key));
+        array_splice($order, $position, 0, [$key]);
 
-        Product::query()->findOrFail($this->productId)->deleteMedia($mediaId);
+        $this->galleryOrder = $order;
         unset($this->gallery);
+    }
+
+    /**
+     * Remove an image: pending ones are dropped, saved ones are deleted from the product.
+     */
+    public function removeImage(string $key): void
+    {
+        if (str_starts_with($key, 'm')) {
+            Gate::authorize('products.update');
+            Product::query()->findOrFail($this->productId)->deleteMedia((int) substr($key, 1));
+        }
+
+        unset($this->pendingImages[$key]);
+        $this->galleryOrder = array_values(array_filter($this->galleryOrder, fn (string $item): bool => $item !== $key));
+        unset($this->gallery);
+    }
+
+
+    /**
+     * Save pending images and write the final gallery order.
+     */
+    private function storeGallery(Product $product): void
+    {
+        $ids = [];
+
+        foreach ($this->galleryOrder as $key) {
+            if (str_starts_with($key, 'm')) {
+                $ids[] = (int) substr($key, 1);
+
+                continue;
+            }
+
+            $file = $this->pendingImages[$key] ?? null;
+
+            if ($file === null) {
+                continue;
+            }
+
+            $ids[] = $product->addMedia($file->getRealPath())
+                ->usingFileName($file->getClientOriginalName())
+                ->toMediaCollection('gallery')
+                ->id;
+        }
+
+        if ($ids !== []) {
+            Media::setNewOrder($ids);
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function savedGalleryKeys(Product $product): array
+    {
+        return $product->getMedia('gallery')->sortBy('order_column')->map(fn ($media) => 'm'.$media->id)->values()->all();
+    }
+
+    /**
+     * Pick up files for one variant. They join that variant's gallery as pending images until the product is saved.
+     */
+    public function updatedVariantUploads($value, string $rowKey): void
+    {
+        $this->validate(["variantUploads.{$rowKey}.*" => ['image', 'max:5120']]);
+
+        foreach ($value as $file) {
+            $key = 'p'.Str::random(8);
+            $this->variantPending[$rowKey][$key] = $file;
+            $this->variantOrder[$rowKey][] = $key;
+        }
+
+        $this->variantUploads[$rowKey] = [];
+    }
+
+    /**
+     * Images for one variant row in display order, saved and pending together.
+     *
+     * @return array<int, array{key: string, src: string, pending: bool}>
+     */
+    public function variantGallery(string $rowKey): array
+    {
+        $saved = collect();
+
+        if (ctype_digit($rowKey) && $this->productId !== null) {
+            $variant = ProductVariant::query()->where('product_id', $this->productId)->find((int) $rowKey);
+            $saved = $variant ? $variant->getMedia('images')->keyBy(fn ($media) => 'm'.$media->id) : collect();
+        }
+
+        return collect($this->variantOrder[$rowKey] ?? [])
+            ->map(function (string $key) use ($rowKey, $saved): ?array {
+                if (str_starts_with($key, 'p')) {
+                    $file = $this->variantPending[$rowKey][$key] ?? null;
+
+                    return $file === null ? null : ['key' => $key, 'src' => $file->temporaryUrl(), 'pending' => true];
+                }
+
+                $media = $saved->get($key);
+
+                return $media === null ? null : ['key' => $key, 'src' => $media->getUrl('thumb'), 'pending' => false];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Drag and drop reorder inside one variant's gallery. The composite id is "rowKey|itemKey".
+     */
+    public function reorderVariantImage(string $composite, int $position): void
+    {
+        [$rowKey, $key] = explode('|', $composite, 2);
+
+        $order = array_values(array_filter($this->variantOrder[$rowKey] ?? [], fn (string $item): bool => $item !== $key));
+        array_splice($order, $position, 0, [$key]);
+
+        $this->variantOrder[$rowKey] = $order;
+    }
+
+    /**
+     * Remove a variant image: pending ones are dropped, saved ones are deleted from the variant.
+     */
+    public function removeVariantImage(string $rowKey, string $key): void
+    {
+        if (str_starts_with($key, 'm')) {
+            Gate::authorize('products.update');
+
+            ProductVariant::query()
+                ->where('product_id', $this->productId)
+                ->findOrFail((int) $rowKey)
+                ->deleteMedia((int) substr($key, 1));
+        }
+
+        unset($this->variantPending[$rowKey][$key]);
+        $this->variantOrder[$rowKey] = array_values(array_filter($this->variantOrder[$rowKey] ?? [], fn (string $item): bool => $item !== $key));
+    }
+
+    /**
+     * Save pending variant images and write each variant's gallery order. Variants are found by SKU after saving.
+     */
+    private function storeVariantGalleries(Product $product): void
+    {
+        foreach ($this->variants as $row) {
+            $variant = $product->variants()->where('sku', trim($row['sku']))->first();
+
+            if ($variant === null) {
+                continue;
+            }
+
+            $ids = [];
+
+            foreach ($this->variantOrder[$row['key']] ?? [] as $key) {
+                if (str_starts_with($key, 'm')) {
+                    $ids[] = (int) substr($key, 1);
+
+                    continue;
+                }
+
+                $file = $this->variantPending[$row['key']][$key] ?? null;
+
+                if ($file === null) {
+                    continue;
+                }
+
+                $ids[] = $variant->addMedia($file->getRealPath())
+                    ->usingFileName($file->getClientOriginalName())
+                    ->toMediaCollection('images')
+                    ->id;
+            }
+
+            if ($ids !== []) {
+                Media::setNewOrder($ids);
+            }
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function savedImageKeys(ProductVariant $variant): array
+    {
+        return $variant->getMedia('images')->sortBy('order_column')->map(fn ($media) => 'm'.$media->id)->values()->all();
     }
 
     private function blankVariant(bool $isDefault): array
     {
         return [
-            'key' => Str::random(8),
+            'key' => 'n'.Str::random(8),
             'id' => null,
             'sku' => '',
             'name' => '',
@@ -277,25 +507,9 @@ new class extends Component {
      */
     private function storeUploads(Product $product): void
     {
-        foreach ($this->newImages as $image) {
-            $product->addMedia($image->getRealPath())
-                ->usingFileName($image->getClientOriginalName())
-                ->toMediaCollection('gallery');
-        }
+        $this->storeGallery($product);
 
-        foreach ($this->variants as $row) {
-            $upload = $this->variantImages[$row['key']] ?? null;
-
-            if ($upload === null) {
-                continue;
-            }
-
-            $variant = $product->variants()->where('sku', trim($row['sku']))->first();
-
-            $variant?->addMedia($upload->getRealPath())
-                ->usingFileName($upload->getClientOriginalName())
-                ->toMediaCollection('images');
-        }
+        $this->storeVariantGalleries($product);
     }
 
     protected function rules(): array
@@ -326,8 +540,7 @@ new class extends Component {
             'variants.*.weight' => ['nullable', 'integer', 'min:0'],
             'variants.*.is_default' => ['boolean'],
             'variants.*.attributeValueIds' => ['array'],
-            'newImages.*' => ['image', 'max:5120'],
-            'variantImages.*' => ['image', 'max:5120'],
+            'uploads.*' => ['image', 'max:5120'],
         ];
 
         foreach ($this->variants as $index => $variant) {
@@ -380,7 +593,15 @@ new class extends Component {
 
                 <flux:field>
                     <flux:label>{{ __('Description') }}</flux:label>
-                    <flux:textarea wire:model="description" rows="8" />
+                    <div wire:ignore class="[&_.trix-button--icon-attach]:hidden [&_.trix-button-group--file-tools]:hidden">
+                        <input id="product-description" type="hidden" value="{{ $description }}">
+                        <trix-editor
+                            input="product-description"
+                            class="trix-content min-h-48 rounded-md border border-zinc-300 bg-white text-sm dark:border-zinc-600 dark:bg-zinc-800"
+                            x-on:trix-change="$wire.set('description', $event.target.value)"
+                        ></trix-editor>
+                    </div>
+                    <flux:description>{{ __('Use headings, lists, bold and links. Images are not supported here.') }}</flux:description>
                     <flux:error name="description" />
                 </flux:field>
             </flux:card>
@@ -460,11 +681,37 @@ new class extends Component {
                             </div>
                         @endif
 
-                        <flux:field>
+                        <div class="space-y-2">
                             <flux:label>{{ __('Variant images') }}</flux:label>
-                            <input type="file" accept="image/*" multiple="false" wire:model="variantImages.{{ $variant['key'] }}" class="text-sm">
-                            <flux:error name="variantImages.{{ $variant['key'] }}" />
-                        </flux:field>
+                            <label class="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-zinc-300 px-3 py-2 text-sm hover:border-zinc-500 dark:border-zinc-600">
+                                <flux:icon name="photo" class="size-5 text-zinc-400" />
+                                <span>{{ __('Add images for this variant') }}</span>
+                                <input type="file" accept="image/*" multiple wire:model="variantUploads.{{ $variant['key'] }}" class="sr-only">
+                            </label>
+                            <flux:error name="variantUploads.{{ $variant['key'] }}.*" />
+
+                            @php($variantImages = $this->variantGallery($variant['key']))
+                            @if ($variantImages !== [])
+                                <ul wire:sort="reorderVariantImage" class="grid grid-cols-4 gap-2">
+                                    @foreach ($variantImages as $image)
+                                        <li wire:key="vimage-{{ $variant['key'] }}-{{ $image['key'] }}" wire:sort:item="{{ $variant['key'] }}|{{ $image['key'] }}" class="relative cursor-grab overflow-hidden rounded border border-zinc-200 dark:border-zinc-700">
+                                            <img src="{{ $image['src'] }}" alt="" class="aspect-square w-full object-cover" loading="lazy">
+                                            @if ($loop->first)
+                                                <span class="absolute start-1 top-1 rounded bg-zinc-900/80 px-1 text-[10px] text-white">{{ __('Main') }}</span>
+                                            @endif
+                                            @if ($image['pending'])
+                                                <span class="absolute bottom-1 start-1 rounded bg-amber-500 px-1 text-[10px] font-medium text-black">{{ __('Not saved') }}</span>
+                                            @endif
+                                            <button type="button"
+                                                wire:click="removeVariantImage('{{ $variant['key'] }}', '{{ $image['key'] }}')"
+                                                @unless ($image['pending']) wire:confirm="{{ __('Delete this image from the variant?') }}" @endunless
+                                                aria-label="{{ __('Remove image') }}"
+                                                class="absolute end-1 top-1 rounded-full bg-white/90 px-1.5 text-sm leading-none text-red-700 hover:bg-white">&times;</button>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
                     </div>
                 @endforeach
             </flux:card>
@@ -559,24 +806,36 @@ new class extends Component {
 
             <flux:card class="space-y-4">
                 <flux:heading>{{ __('Gallery') }}</flux:heading>
+                <flux:text>{{ __('Add one or more images. Drag to reorder; the first image is the main photo. Remove with the X on an image.') }}</flux:text>
 
-                @if ($productId)
-                    <ul wire:sort="reorderGallery" class="grid grid-cols-3 gap-2">
-                        @foreach ($this->gallery as $media)
-                            <li wire:key="media-{{ $media->id }}" wire:sort:item="{{ $media->id }}" class="relative overflow-hidden rounded border border-zinc-200 dark:border-zinc-700">
-                                <img src="{{ $media->getUrl('thumb') }}" alt="" class="aspect-square w-full object-cover" loading="lazy">
-                                <button type="button" wire:click="deleteImage({{ $media->id }})" wire:confirm="{{ __('Remove this image?') }}" class="absolute end-1 top-1 rounded bg-white/90 px-1.5 text-xs text-red-700">{{ __('Remove') }}</button>
+                <label class="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-zinc-300 p-6 text-center text-sm hover:border-zinc-500 dark:border-zinc-600">
+                    <flux:icon name="photo" class="size-8 text-zinc-400" />
+                    <span class="font-medium">{{ __('Click to choose images') }}</span>
+                    <span class="text-xs text-zinc-500">{{ __('JPG, PNG or WebP, up to 5 MB each') }}</span>
+                    <input type="file" accept="image/*" multiple wire:model="uploads" class="sr-only">
+                </label>
+                <flux:error name="uploads.*" />
+
+                @if (count($this->gallery) > 0)
+                    <ul wire:sort="reorderGallery" class="grid grid-cols-3 gap-3">
+                        @foreach ($this->gallery as $image)
+                            <li wire:key="image-{{ $image['key'] }}" wire:sort:item="{{ $image['key'] }}" class="relative cursor-grab overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
+                                <img src="{{ $image['src'] }}" alt="" class="aspect-square w-full object-cover" loading="lazy">
+                                @if ($loop->first)
+                                    <span class="absolute start-1 top-1 rounded bg-zinc-900/80 px-1.5 text-xs text-white">{{ __('Main') }}</span>
+                                @endif
+                                @if ($image['pending'])
+                                    <span class="absolute bottom-1 start-1 rounded bg-amber-500 px-1.5 text-xs font-medium text-black">{{ __('Not saved') }}</span>
+                                @endif
+                                <button type="button"
+                                    wire:click="removeImage('{{ $image['key'] }}')"
+                                    @unless ($image['pending']) wire:confirm="{{ __('Delete this image from the product?') }}" @endunless
+                                    aria-label="{{ __('Remove image') }}"
+                                    class="absolute end-1 top-1 rounded-full bg-white/90 px-2 py-0.5 text-sm leading-none text-red-700 hover:bg-white">&times;</button>
                             </li>
                         @endforeach
                     </ul>
-                    <flux:text>{{ __('Drag images to reorder. The first image is the main photo.') }}</flux:text>
                 @endif
-
-                <flux:field>
-                    <flux:label>{{ __('Add images') }}</flux:label>
-                    <input type="file" accept="image/*" multiple wire:model="newImages" class="text-sm">
-                    <flux:error name="newImages.*" />
-                </flux:field>
             </flux:card>
 
             <div class="flex justify-end gap-2">
