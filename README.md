@@ -42,7 +42,7 @@ php artisan serve
 
 Open http://127.0.0.1:8000 for the store and http://127.0.0.1:8000/admin for the admin panel.
 
-Shortcut: `composer run setup` does the install steps in one go (it copies `.env`, generates the key, migrates and builds assets). Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env` first.
+`composer run setup` covers the install steps (it copies `.env`, generates the key, runs migrations and builds assets). It does not create the SQLite file or seed the database, so on a first run follow the steps above and run `php artisan db:seed` if you skip the seed.
 
 ### Demo data
 
