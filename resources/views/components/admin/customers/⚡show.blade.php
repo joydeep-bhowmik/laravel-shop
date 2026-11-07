@@ -2,6 +2,7 @@
 
 use App\Enums\AdminRole;
 use App\Models\CartItem;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Models\Wishlist;
@@ -60,8 +61,11 @@ new class extends Component {
         return app(CustomerCartService::class)->summary($this->account);
     }
 
+    /**
+     * Products matching the search by name, SKU or option (such as "M" or "Red"). Each product lists all of its active variants.
+     */
     #[Computed]
-    public function variantResults()
+    public function productResults()
     {
         $search = trim($this->productSearch);
 
@@ -69,15 +73,31 @@ new class extends Component {
             return collect();
         }
 
-        return ProductVariant::query()
-            ->with('product')
-            ->active()
-            ->whereHas('product', fn ($query) => $query->published())
+        return Product::query()
+            ->published()
+            ->with(['variants' => fn ($query) => $query
+                ->active()
+                ->oldest('id')
+                ->with('attributeValues.attribute')])
             ->where(fn ($query) => $query
-                ->where('sku', 'like', "%{$search}%")
-                ->orWhereHas('product', fn ($products) => $products->where('name', 'like', "%{$search}%")))
+                ->where('name', 'like', "%{$search}%")
+                ->orWhereHas('variants', fn ($variants) => $variants->where('sku', 'like', "%{$search}%"))
+                ->orWhereHas('variants.attributeValues', fn ($values) => $values->where('value', 'like', "%{$search}%")))
+            ->orderBy('name')
             ->limit(8)
             ->get();
+    }
+
+    /**
+     * "Size: M · Colour: Red", or "Standard" for a variant without options.
+     */
+    public function optionLabel(ProductVariant $variant): string
+    {
+        $options = $variant->attributeValues
+            ->map(fn ($value) => $value->attribute->name.': '.$value->value)
+            ->implode(' · ');
+
+        return $options !== '' ? $options : __('Standard');
     }
 
     public function addVariant(int $variantId, CustomerCartService $cart): void
@@ -218,7 +238,7 @@ new class extends Component {
                 <div class="flex flex-wrap items-center justify-between gap-3 text-sm" wire:key="cart-{{ $item->id }}">
                     <div>
                         {{ $item->productVariant->product->name }}
-                        <span class="text-zinc-500">({{ $item->productVariant->sku }})</span>
+                        <span class="text-zinc-500">· {{ $this->optionLabel($item->productVariant) }}</span>
                         <div class="text-xs text-zinc-500">{{ MoneyFormatter::format($item->productVariant->price_paise) }}</div>
                     </div>
                     @can('customers.support')
@@ -271,19 +291,37 @@ new class extends Component {
 
                 <div class="space-y-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
                     <flux:heading size="sm">{{ __('Add a product to this cart') }}</flux:heading>
-                    <div class="flex items-start gap-2">
-                        <flux:input wire:model.live.debounce.300ms="productSearch" icon="magnifying-glass" :placeholder="__('Product name or SKU')" class="flex-1" />
-                        <flux:input type="number" min="1" max="99" wire:model="quantity" class="w-20" />
-                    </div>
-                    @foreach ($this->variantResults as $variant)
-                        <div class="flex items-center justify-between gap-3 text-sm" wire:key="variant-{{ $variant->id }}">
-                            <span>
-                                {{ $variant->product->name }} <span class="text-zinc-500">({{ $variant->sku }})</span>
-                                <span class="text-xs text-zinc-500">· {{ __(':count in stock', ['count' => $variant->stock_quantity]) }}</span>
-                            </span>
-                            <flux:button size="xs" wire:click="addVariant({{ $variant->id }})">{{ __('Add') }}</flux:button>
+                    <flux:field>
+                        <flux:label>{{ __('Find a product') }}</flux:label>
+                        <flux:input wire:model.live.debounce.300ms="productSearch" icon="magnifying-glass" :placeholder="__('Search by product name, SKU, size or colour')" />
+                    </flux:field>
+                    <flux:field class="w-32">
+                        <flux:label>{{ __('Quantity') }}</flux:label>
+                        <flux:input type="number" min="1" max="99" wire:model="quantity" />
+                    </flux:field>
+                    @forelse ($this->productResults as $product)
+                        <div class="space-y-2" wire:key="product-{{ $product->id }}">
+                            <flux:heading size="sm">{{ $product->name }}</flux:heading>
+                            @forelse ($product->variants as $variant)
+                                <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700" wire:key="variant-{{ $variant->id }}">
+                                    <div>
+                                        <div class="font-medium">{{ $this->optionLabel($variant) }}</div>
+                                        <div class="text-xs text-zinc-500">
+                                            {{ $variant->sku }} · {{ MoneyFormatter::format($variant->price_paise) }} ·
+                                            {{ $variant->stock_quantity > 0 ? __(':count in stock', ['count' => $variant->stock_quantity]) : __('Out of stock') }}
+                                        </div>
+                                    </div>
+                                    <flux:button size="xs" wire:click="addVariant({{ $variant->id }})" :disabled="$variant->stock_quantity < 1">{{ __('Add') }}</flux:button>
+                                </div>
+                            @empty
+                                <flux:text class="text-sm">{{ __('No active variants.') }}</flux:text>
+                            @endforelse
                         </div>
-                    @endforeach
+                    @empty
+                        @if (trim($this->productSearch) !== '')
+                            <flux:text class="text-sm">{{ __('No products match. Try the name, SKU or an option such as a size or colour.') }}</flux:text>
+                        @endif
+                    @endforelse
                 </div>
             @endcan
         </flux:card>

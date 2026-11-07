@@ -2,6 +2,7 @@
 
 use App\Models\ProductReview;
 use App\Services\ReviewService;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -10,7 +11,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component {
-    use WithPagination;
+    use SortsAndFiltersTables, WithPagination;
 
     /** @var array<int, string> */
     public array $selected = [];
@@ -25,7 +26,12 @@ new class extends Component {
             ->with(['product', 'user'])
             ->when($this->state === 'pending', fn ($query) => $query->where('is_approved', false))
             ->when($this->state === 'approved', fn ($query) => $query->where('is_approved', true))
-            ->latest()
+            ->tap(fn ($query) => $this->applyDateRange($query, 'created_at'))
+            ->tap(fn ($query) => $this->applyTableSort($query, [
+                'rating' => 'rating',
+                'status' => 'is_approved',
+                'created_at' => 'created_at',
+            ]))
             ->paginate(15);
     }
 
@@ -106,6 +112,7 @@ new class extends Component {
     </div>
 
     @if ($selected !== [])
+        <x-admin.date-range />
         <div class="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
             <flux:button variant="primary" wire:click="bulkApprove">{{ __('Approve selected') }}</flux:button>
             <x-confirm-button name="confirm-bulk-reviews" :label="__('Remove selected')" action="bulkRemove" :message="__('Remove the selected reviews?')" />
@@ -120,8 +127,8 @@ new class extends Component {
             </flux:table.column>
             <flux:table.column>{{ __('Product') }}</flux:table.column>
             <flux:table.column>{{ __('Customer') }}</flux:table.column>
-            <flux:table.column>{{ __('Review') }}</flux:table.column>
-            <flux:table.column>{{ __('Status') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'rating'" :direction="$direction" wire:click="sortBy('rating')">{{ __('Review') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'status'" :direction="$direction" wire:click="sortBy('status')">{{ __('Status') }}</flux:table.column>
             <flux:table.column></flux:table.column>
         </flux:table.columns>
 

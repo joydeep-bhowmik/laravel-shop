@@ -3,6 +3,7 @@
 use App\Enums\AdminPermission;
 use App\Enums\AdminRole;
 use App\Services\AdminRoleService;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -11,6 +12,8 @@ use Livewire\Component;
 use Spatie\Permission\Models\Role;
 
 new class extends Component {
+    use SortsAndFiltersTables;
+
     public bool $showForm = false;
 
     public ?int $editingId = null;
@@ -23,11 +26,12 @@ new class extends Component {
     #[Computed]
     public function roles()
     {
-        return Role::query()
-            ->with('permissions')
-            ->withCount('users')
-            ->orderBy('name')
-            ->get();
+        return $this->applyTableSort(
+            $this->applyDateRange(Role::query()->with('permissions')->withCount('users'), 'created_at'),
+            ['name' => 'name', 'users' => 'users_count', 'created_at' => 'created_at'],
+            'name',
+            'asc',
+        )->get();
     }
 
     /**
@@ -125,11 +129,12 @@ new class extends Component {
         <flux:button variant="primary" icon="plus" wire:click="create">{{ __('New role') }}</flux:button>
     </div>
 
+    <x-admin.date-range />
     <flux:table>
         <flux:table.columns>
-            <flux:table.column>{{ __('Role') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'name'" :direction="$direction" wire:click="sortBy('name')">{{ __('Role') }}</flux:table.column>
             <flux:table.column>{{ __('Permissions') }}</flux:table.column>
-            <flux:table.column>{{ __('Users') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'users'" :direction="$direction" wire:click="sortBy('users')">{{ __('Users') }}</flux:table.column>
             <flux:table.column></flux:table.column>
         </flux:table.columns>
 

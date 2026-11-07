@@ -3,6 +3,8 @@
 use App\Enums\AdminPermission;
 use App\Enums\AdminRole;
 use App\Enums\ProductStatus;
+use App\Models\Attribute;
+use App\Models\AttributeValue;
 use App\Models\CartItem;
 use App\Models\Coupon;
 use App\Models\Product;
@@ -242,4 +244,29 @@ test('the admin panel link in the footer is shown only to admin staff', function
     $this->actingAs($admin)->get(route('home'))->assertSee('Admin panel');
     $this->actingAs($customer)->get(route('home'))->assertDontSee('Admin panel');
     $this->get(route('home'))->assertDontSee('Admin panel');
+});
+
+test('support finds a product by option and sees every variant with its options', function () {
+    $support = customerTestStaff(AdminRole::Support);
+    $this->actingAs($support);
+
+    $customer = User::factory()->create();
+    $product = Product::factory()->create(['name' => 'Cotton Kurta', 'status' => ProductStatus::Published, 'published_at' => null]);
+
+    $size = Attribute::query()->create(['name' => 'Size', 'slug' => 'size', 'is_variant' => true, 'position' => 1]);
+    $colour = Attribute::query()->create(['name' => 'Colour', 'slug' => 'colour', 'is_variant' => true, 'position' => 2]);
+    $sizeM = AttributeValue::query()->create(['attribute_id' => $size->id, 'value' => 'M', 'slug' => 'm', 'position' => 1]);
+    $colourRed = AttributeValue::query()->create(['attribute_id' => $colour->id, 'value' => 'Red', 'slug' => 'red', 'position' => 1]);
+
+    $variant = ProductVariant::factory()->create(['product_id' => $product->id, 'is_active' => true, 'stock_quantity' => 4]);
+    $variant->attributeValues()->attach([$sizeM->id, $colourRed->id]);
+
+    Livewire::test('admin.customers.show', ['customer' => $customer->id])
+        ->set('productSearch', 'Red')
+        ->assertSee('Cotton Kurta')
+        ->assertSee('Size: M · Colour: Red')
+        ->call('addVariant', $variant->id)
+        ->assertHasNoErrors();
+
+    expect(CartItem::query()->where('product_variant_id', $variant->id)->value('quantity'))->toBe(1);
 });

@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Services\MoneyFormatter;
 use App\Services\ProductCsvService;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -17,7 +18,7 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 new class extends Component {
-    use WithFileUploads, WithPagination;
+    use SortsAndFiltersTables, WithFileUploads, WithPagination;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -42,7 +43,7 @@ new class extends Component {
     #[Computed]
     public function products()
     {
-        return Product::query()
+        $query = Product::query()
             ->with(['category', 'brand', 'defaultVariant'])
             ->withSum('variants as stock_total', 'stock_quantity')
             ->when($this->search !== '', fn ($query) => $query->where(function ($query) {
@@ -50,9 +51,14 @@ new class extends Component {
                     ->orWhereHas('variants', fn ($variants) => $variants->where('sku', 'like', "%{$this->search}%"));
             }))
             ->when($this->status !== '', fn ($query) => $query->where('status', $this->status))
-            ->when($this->categoryId !== '', fn ($query) => $query->where('category_id', $this->categoryId))
-            ->latest('id')
-            ->paginate(15);
+            ->when($this->categoryId !== '', fn ($query) => $query->where('category_id', $this->categoryId));
+
+        return $this->applyTableSort($this->applyDateRange($query, 'created_at'), [
+            'name' => 'name',
+            'status' => 'status',
+            'stock' => 'stock_total',
+            'created_at' => 'created_at',
+        ])->paginate(15);
     }
 
     #[Computed]
@@ -178,6 +184,7 @@ new class extends Component {
         <div class="flex flex-wrap items-end justify-between gap-3">
             <div class="flex flex-wrap items-end gap-3">
                 <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search name or SKU')" class="w-64" />
+                <x-admin.date-range />
 
                 <flux:select wire:model.live="status" class="w-44">
                     <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
@@ -224,11 +231,11 @@ new class extends Component {
                 <flux:table.column>
                     <input type="checkbox" wire:click="toggleAll" @checked($this->allOnPageSelected) class="rounded border-zinc-300" aria-label="{{ __('Select all on this page') }}">
                 </flux:table.column>
-                <flux:table.column>{{ __('Product') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'name'" :direction="$direction" wire:click="sortBy('name')">{{ __('Product') }}</flux:table.column>
                 <flux:table.column>{{ __('Category') }}</flux:table.column>
                 <flux:table.column>{{ __('Price') }}</flux:table.column>
-                <flux:table.column>{{ __('Stock') }}</flux:table.column>
-                <flux:table.column>{{ __('Status') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'stock'" :direction="$direction" wire:click="sortBy('stock')">{{ __('Stock') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'status'" :direction="$direction" wire:click="sortBy('status')">{{ __('Status') }}</flux:table.column>
                 <flux:table.column></flux:table.column>
             </flux:table.columns>
 

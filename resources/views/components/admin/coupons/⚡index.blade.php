@@ -3,6 +3,7 @@
 use App\Enums\CouponType;
 use App\Models\Coupon;
 use App\Services\MoneyFormatter;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -13,7 +14,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component {
-    use WithPagination;
+    use SortsAndFiltersTables, WithPagination;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -49,7 +50,15 @@ new class extends Component {
     {
         return Coupon::query()
             ->when($this->search !== '', fn ($query) => $query->where('code', 'like', '%'.Str::upper($this->search).'%'))
-            ->latest('id')
+            ->tap(fn ($query) => $this->applyDateRange($query, 'created_at'))
+            ->tap(fn ($query) => $this->applyTableSort($query, [
+                'code' => 'code',
+                'value' => 'value',
+                'used' => 'usage_count',
+                'expires' => 'expires_at',
+                'status' => 'is_active',
+                'created_at' => 'created_at',
+            ]))
             ->paginate(15);
     }
 
@@ -162,17 +171,18 @@ new class extends Component {
 <div class="space-y-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search code')" class="w-64" />
+        <x-admin.date-range />
         <flux:button variant="primary" icon="plus" wire:click="create">{{ __('New coupon') }}</flux:button>
     </div>
 
     <flux:table :paginate="$this->coupons">
         <flux:table.columns>
-            <flux:table.column>{{ __('Code') }}</flux:table.column>
-            <flux:table.column>{{ __('Discount') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'code'" :direction="$direction" wire:click="sortBy('code')">{{ __('Code') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'value'" :direction="$direction" wire:click="sortBy('value')">{{ __('Discount') }}</flux:table.column>
             <flux:table.column>{{ __('Min order') }}</flux:table.column>
-            <flux:table.column>{{ __('Used') }}</flux:table.column>
-            <flux:table.column>{{ __('Expires') }}</flux:table.column>
-            <flux:table.column>{{ __('Status') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'used'" :direction="$direction" wire:click="sortBy('used')">{{ __('Used') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'expires'" :direction="$direction" wire:click="sortBy('expires')">{{ __('Expires') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'status'" :direction="$direction" wire:click="sortBy('status')">{{ __('Status') }}</flux:table.column>
             <flux:table.column></flux:table.column>
         </flux:table.columns>
 

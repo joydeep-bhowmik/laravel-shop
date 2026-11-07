@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Brand;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -9,7 +10,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component {
-    use WithPagination;
+    use SortsAndFiltersTables, WithPagination;
 
     public bool $showForm = false;
 
@@ -24,7 +25,12 @@ new class extends Component {
     #[Computed]
     public function brands()
     {
-        return Brand::query()->withCount('products')->orderBy('name')->paginate(15);
+        return $this->applyTableSort(
+            $this->applyDateRange(Brand::query()->withCount('products'), 'created_at'),
+            ['name' => 'name', 'products' => 'products_count', 'status' => 'is_active', 'created_at' => 'created_at'],
+            'name',
+            'asc',
+        )->paginate(15);
     }
 
     public function create(): void
@@ -90,11 +96,12 @@ new class extends Component {
         <flux:button variant="primary" icon="plus" wire:click="create">{{ __('New brand') }}</flux:button>
     </div>
 
+    <x-admin.date-range />
     <flux:table :paginate="$this->brands">
         <flux:table.columns>
-            <flux:table.column>{{ __('Name') }}</flux:table.column>
-            <flux:table.column>{{ __('Products') }}</flux:table.column>
-            <flux:table.column>{{ __('Status') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'name'" :direction="$direction" wire:click="sortBy('name')">{{ __('Name') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'products'" :direction="$direction" wire:click="sortBy('products')">{{ __('Products') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'status'" :direction="$direction" wire:click="sortBy('status')">{{ __('Status') }}</flux:table.column>
             <flux:table.column></flux:table.column>
         </flux:table.columns>
 

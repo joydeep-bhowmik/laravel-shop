@@ -3,6 +3,7 @@
 use App\Enums\AdminRole;
 use App\Models\User;
 use App\Services\CustomerAdminService;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -14,7 +15,7 @@ use Livewire\WithPagination;
 use Spatie\Permission\Models\Role;
 
 new class extends Component {
-    use WithPagination;
+    use SortsAndFiltersTables, WithPagination;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -41,7 +42,13 @@ new class extends Component {
             }))
             ->when($this->roleFilter === 'customers', fn ($query) => $query->whereDoesntHave('roles'))
             ->when($this->roleFilter !== '' && $this->roleFilter !== 'customers', fn ($query) => $query->whereHas('roles', fn ($roles) => $roles->where('name', $this->roleFilter)))
-            ->latest('id')
+            ->tap(fn ($query) => $this->applyDateRange($query, 'created_at'))
+            ->tap(fn ($query) => $this->applyTableSort($query, [
+                'name' => 'name',
+                'email' => 'email',
+                'status' => 'is_blocked',
+                'joined' => 'created_at',
+            ], 'joined'))
             ->paginate(15);
     }
 
@@ -123,6 +130,7 @@ new class extends Component {
     <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-3">
             <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search name or email')" class="w-72" />
+            <x-admin.date-range />
             <flux:select wire:model.live="roleFilter" class="w-48">
                 <flux:select.option value="">{{ __('Everyone') }}</flux:select.option>
                 <flux:select.option value="customers">{{ __('Customers only') }}</flux:select.option>
@@ -135,10 +143,10 @@ new class extends Component {
 
     <flux:table :paginate="$this->users">
         <flux:table.columns>
-            <flux:table.column>{{ __('Name') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'name'" :direction="$direction" wire:click="sortBy('name')">{{ __('Name') }}</flux:table.column>
             <flux:table.column>{{ __('Roles') }}</flux:table.column>
-            <flux:table.column>{{ __('Status') }}</flux:table.column>
-            <flux:table.column>{{ __('Joined') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'status'" :direction="$direction" wire:click="sortBy('status')">{{ __('Status') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'joined'" :direction="$direction" wire:click="sortBy('joined')">{{ __('Joined') }}</flux:table.column>
             <flux:table.column></flux:table.column>
         </flux:table.columns>
 

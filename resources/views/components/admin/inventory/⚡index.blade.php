@@ -5,6 +5,7 @@ use App\Enums\StockMovementReason;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
 use App\Services\InventoryService;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -14,7 +15,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component {
-    use WithPagination;
+    use SortsAndFiltersTables, WithPagination;
 
     #[Url(as: 'q', except: '')]
     public string $search = '';
@@ -44,7 +45,7 @@ new class extends Component {
                     ->orWhereHas('product', fn ($product) => $product->where('name', 'like', "%{$this->search}%"));
             }))
             ->when($this->lowOnly, fn ($query) => $query->whereColumn('stock_quantity', '<=', 'low_stock_threshold'))
-            ->orderBy('stock_quantity')
+            ->tap(fn ($query) => $this->applyTableSort($query, ['sku' => 'sku', 'stock' => 'stock_quantity', 'alert' => 'low_stock_threshold'], 'stock', 'asc'))
             ->paginate(20);
     }
 
@@ -62,6 +63,7 @@ new class extends Component {
             : StockMovement::query()
                 ->with('user')
                 ->where('product_variant_id', $this->historyVariantId)
+                ->tap(fn ($query) => $this->applyDateRange($query, 'created_at'))
                 ->latest('id')
                 ->limit(25)
                 ->get();
@@ -134,9 +136,9 @@ new class extends Component {
         <flux:table :paginate="$this->variants">
             <flux:table.columns>
                 <flux:table.column>{{ __('Product') }}</flux:table.column>
-                <flux:table.column>{{ __('SKU') }}</flux:table.column>
-                <flux:table.column>{{ __('In stock') }}</flux:table.column>
-                <flux:table.column>{{ __('Alert at') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'sku'" :direction="$direction" wire:click="sortBy('sku')">{{ __('SKU') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'stock'" :direction="$direction" wire:click="sortBy('stock')">{{ __('In stock') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'alert'" :direction="$direction" wire:click="sortBy('alert')">{{ __('Alert at') }}</flux:table.column>
                 <flux:table.column></flux:table.column>
             </flux:table.columns>
 
@@ -170,6 +172,7 @@ new class extends Component {
         @if ($historyVariantId)
             <flux:card class="space-y-3">
                 <flux:heading>{{ __('Stock history') }}</flux:heading>
+                <x-admin.date-range />
                 <flux:table>
                     <flux:table.columns>
                         <flux:table.column>{{ __('When') }}</flux:table.column>

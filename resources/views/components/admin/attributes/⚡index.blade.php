@@ -2,6 +2,7 @@
 
 use App\Models\Attribute;
 use App\Models\AttributeValue;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -10,6 +11,8 @@ use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component {
+    use SortsAndFiltersTables;
+
     public bool $showForm = false;
 
     public ?int $editingId = null;
@@ -27,7 +30,12 @@ new class extends Component {
     #[Computed]
     public function attributeList()
     {
-        return Attribute::query()->withCount('values')->orderBy('position')->orderBy('name')->get();
+        return $this->applyTableSort(
+            $this->applyDateRange(Attribute::query()->withCount('values'), 'created_at'),
+            ['position' => 'position', 'name' => 'name', 'type' => 'is_variant', 'values' => 'values_count', 'created_at' => 'created_at'],
+            'position',
+            'asc',
+        )->get();
     }
 
     #[Computed]
@@ -145,11 +153,12 @@ new class extends Component {
             <flux:button variant="primary" icon="plus" wire:click="create">{{ __('New attribute') }}</flux:button>
         </div>
 
+        <x-admin.date-range />
         <flux:table>
             <flux:table.columns>
-                <flux:table.column>{{ __('Name') }}</flux:table.column>
-                <flux:table.column>{{ __('Type') }}</flux:table.column>
-                <flux:table.column>{{ __('Values') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'name'" :direction="$direction" wire:click="sortBy('name')">{{ __('Name') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'type'" :direction="$direction" wire:click="sortBy('type')">{{ __('Type') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'values'" :direction="$direction" wire:click="sortBy('values')">{{ __('Values') }}</flux:table.column>
                 <flux:table.column></flux:table.column>
             </flux:table.columns>
 

@@ -4,6 +4,7 @@
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\OrderStatusService;
+use App\Services\SortsAndFiltersTables;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -14,7 +15,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 new class extends Component {
-    use WithPagination;
+    use SortsAndFiltersTables, WithPagination;
 
     /** @var array<int, string> */
     public array $selected = [];
@@ -37,7 +38,13 @@ new class extends Component {
                     ->orWhereHas('user', fn ($user) => $user->where('email', 'like', "%{$this->search}%"));
             }))
             ->when($this->status !== '', fn ($query) => $query->where('status', $this->status))
-            ->latest('placed_at')
+            ->tap(fn ($query) => $this->applyDateRange($query, 'placed_at'))
+            ->tap(fn ($query) => $this->applyTableSort($query, [
+                'order' => 'order_number',
+                'placed_at' => 'placed_at',
+                'total' => 'total_paise',
+                'status' => 'status',
+            ], 'placed_at'))
             ->paginate(20);
     }
 
@@ -113,6 +120,7 @@ new class extends Component {
     <div class="space-y-4">
         <div class="flex flex-wrap items-end gap-3">
             <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Order number or customer email')" class="w-72" />
+            <x-admin.date-range />
             <flux:select wire:model.live="status" class="w-44">
                 <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
                 @foreach (OrderStatus::cases() as $case)
@@ -138,12 +146,12 @@ new class extends Component {
                 <flux:table.column>
                     <input type="checkbox" wire:click="toggleAll" @checked($this->allOnPageSelected) class="rounded border-zinc-300" aria-label="{{ __('Select all on this page') }}">
                 </flux:table.column>
-                <flux:table.column>{{ __('Order') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'order'" :direction="$direction" wire:click="sortBy('order')">{{ __('Order') }}</flux:table.column>
                 <flux:table.column>{{ __('Customer') }}</flux:table.column>
-                <flux:table.column>{{ __('Placed') }}</flux:table.column>
-                <flux:table.column>{{ __('Total') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'placed_at'" :direction="$direction" wire:click="sortBy('placed_at')">{{ __('Placed') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'total'" :direction="$direction" wire:click="sortBy('total')">{{ __('Total') }}</flux:table.column>
                 <flux:table.column>{{ __('Payment') }}</flux:table.column>
-                <flux:table.column>{{ __('Status') }}</flux:table.column>
+                <flux:table.column sortable :sorted="$sort === 'status'" :direction="$direction" wire:click="sortBy('status')">{{ __('Status') }}</flux:table.column>
             </flux:table.columns>
 
             <flux:table.rows>

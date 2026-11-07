@@ -63,21 +63,25 @@ test('the activity log can be narrowed to a date range', function () {
     recordActivityRow('Recent change', now()->subDay()->toDateTimeString());
 
     Livewire::test('admin.activity.index')
-        ->set('from', now()->subDays(3)->toDateString())
-        ->set('to', now()->toDateString())
+        ->set('dateFrom', now()->subDays(3)->toDateString())
+        ->set('dateTo', now()->toDateString())
         ->assertSee('Recent change')
         ->assertDontSee('Old change');
 });
 
-test('an end date before the start date is refused', function () {
+test('a reversed date range is swapped so it still returns the chosen days', function () {
     $admin = User::factory()->create();
     $admin->assignRole(AdminRole::SuperAdmin->value);
     $this->actingAs($admin);
 
+    recordActivityRow('Old change', now()->subDays(10)->toDateTimeString());
+    recordActivityRow('Recent change', now()->subDay()->toDateTimeString());
+
     Livewire::test('admin.activity.index')
-        ->set('from', now()->toDateString())
-        ->set('to', now()->subDays(5)->toDateString())
-        ->assertHasErrors(['to']);
+        ->set('dateFrom', now()->toDateString())
+        ->set('dateTo', now()->subDays(3)->toDateString())
+        ->assertSee('Recent change')
+        ->assertDontSee('Old change');
 });
 
 test('the activity log warns when logging is off', function () {

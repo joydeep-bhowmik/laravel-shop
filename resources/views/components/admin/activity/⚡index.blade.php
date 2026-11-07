@@ -1,49 +1,14 @@
 <?php
 
 use App\Services\SettingsService;
-use Illuminate\Support\Carbon;
+use App\Services\SortsAndFiltersTables;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Spatie\Activitylog\Models\Activity;
 
 new class extends Component {
-    use WithPagination;
-
-    /** First day to include, as Y-m-d. Empty means no lower bound. */
-    #[Url(as: 'from', except: '')]
-    public string $from = '';
-
-    /** Last day to include, as Y-m-d. Empty means no upper bound. */
-    #[Url(as: 'to', except: '')]
-    public string $to = '';
-
-    public function updatedFrom(): void
-    {
-        $this->validateDates();
-        $this->resetPage();
-    }
-
-    public function updatedTo(): void
-    {
-        $this->validateDates();
-        $this->resetPage();
-    }
-
-    private function validateDates(): void
-    {
-        $this->validate([
-            'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
-        ]);
-    }
-
-    public function clearDates(): void
-    {
-        $this->reset('from', 'to');
-        $this->resetPage();
-    }
+    use SortsAndFiltersTables, WithPagination;
 
     #[Computed]
     public function loggingEnabled(): bool
@@ -54,31 +19,12 @@ new class extends Component {
     #[Computed]
     public function entries()
     {
-        $from = $this->parseDate($this->from);
-        $to = $this->parseDate($this->to);
+        $query = Activity::query()->with(['causer', 'subject']);
 
-        return Activity::query()
-            ->with(['causer', 'subject'])
-            ->when($from !== null, fn ($query) => $query->where('created_at', '>=', $from->startOfDay()))
-            ->when($to !== null, fn ($query) => $query->where('created_at', '<=', $to->endOfDay()))
-            ->latest('id')
-            ->paginate(25);
-    }
-
-    /**
-     * Ignore anything that is not a date, such as a hand-edited URL.
-     */
-    private function parseDate(string $value): ?Carbon
-    {
-        if ($value === '') {
-            return null;
-        }
-
-        try {
-            return Carbon::parse($value);
-        } catch (\Throwable) {
-            return null;
-        }
+        return $this->applyTableSort($this->applyDateRange($query, 'created_at'), [
+            'when' => 'created_at',
+            'event' => 'description',
+        ])->paginate(25);
     }
 }; ?>
 
@@ -93,27 +39,13 @@ new class extends Component {
         </flux:callout>
     @endunless
 
-    <div class="flex flex-wrap items-end gap-3">
-        <flux:field class="w-44">
-            <flux:label>{{ __('From') }}</flux:label>
-            <flux:input type="date" wire:model.live="from" />
-            <flux:error name="from" />
-        </flux:field>
-        <flux:field class="w-44">
-            <flux:label>{{ __('To') }}</flux:label>
-            <flux:input type="date" wire:model.live="to" />
-            <flux:error name="to" />
-        </flux:field>
-        @if ($from !== '' || $to !== '')
-            <flux:button variant="ghost" wire:click="clearDates">{{ __('Clear dates') }}</flux:button>
-        @endif
-    </div>
+    <x-admin.date-range />
 
     <flux:table :paginate="$this->entries">
         <flux:table.columns>
-            <flux:table.column>{{ __('When') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'when'" :direction="$direction" wire:click="sortBy('when')">{{ __('When') }}</flux:table.column>
             <flux:table.column>{{ __('Who') }}</flux:table.column>
-            <flux:table.column>{{ __('Event') }}</flux:table.column>
+            <flux:table.column sortable :sorted="$sort === 'event'" :direction="$direction" wire:click="sortBy('event')">{{ __('Event') }}</flux:table.column>
             <flux:table.column>{{ __('Subject') }}</flux:table.column>
             <flux:table.column>{{ __('Changes') }}</flux:table.column>
         </flux:table.columns>
