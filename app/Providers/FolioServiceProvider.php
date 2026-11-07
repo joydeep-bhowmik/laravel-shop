@@ -25,8 +25,8 @@ class FolioServiceProvider extends ServiceProvider
         Folio::path(resource_path('views/pages'))
             ->uri('/')
             ->middleware([
-                'admin' => ['auth', 'verified', 'can:admin.access'],
-                'admin/*' => ['auth', 'verified', 'can:admin.access'],
+                'admin' => ['auth', 'verified.if-required', 'can:admin.access'],
+                'admin/*' => ['auth', 'verified.if-required', 'can:admin.access'],
             ]);
     }
 }

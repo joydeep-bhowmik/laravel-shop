@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureEmailVerifiedIfRequired;
 use App\Http\Middleware\EnsureUserIsNotBlocked;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -13,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias(['verified.if-required' => EnsureEmailVerifiedIfRequired::class]);
         $middleware->appendToGroup('web', EnsureUserIsNotBlocked::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

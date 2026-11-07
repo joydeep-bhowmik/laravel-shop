@@ -3,7 +3,7 @@
 use function Laravel\Folio\{middleware, name};
 
 name('account.security');
-middleware(['auth', 'verified']);
+middleware(['auth', 'verified.if-required']);
 ?>
 <x-layouts::app :title="__('Password and two-factor')">
     <livewire:account.security />

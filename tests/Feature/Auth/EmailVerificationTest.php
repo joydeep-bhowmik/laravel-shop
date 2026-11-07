@@ -1,13 +1,23 @@
 <?php
 
 use App\Models\User;
+use App\Services\SettingsService;
 use Illuminate\Support\Facades\URL;
 
-test('unverified customers cannot open account pages', function () {
+test('verification is optional by default, so unverified customers can use account pages', function () {
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)->get(route('account.profile'))->assertOk();
+});
+
+test('when the store requires verification, unverified customers are sent to the notice', function () {
+    app(SettingsService::class)->set('auth.require_email_verification', '1');
     $user = User::factory()->unverified()->create();
 
     $this->actingAs($user)->get(route('account.profile'))
         ->assertRedirect(route('verification.notice'));
+
+    $this->actingAs(User::factory()->create())->get(route('account.profile'))->assertOk();
 });
 
 test('a signed verification link marks the account verified', function () {

@@ -27,6 +27,8 @@ new class extends Component {
 
     public bool $codEnabled = true;
 
+    public bool $authRequireVerification = false;
+
     public string $codMaxOrderRupees = '';
 
     public string $razorpayMode = 'test';
@@ -61,6 +63,7 @@ new class extends Component {
         $this->shippingFreeThresholdRupees = number_format($settings->int('shipping.free_threshold_paise') / 100, 2, '.', '');
         $this->shippingStandardDays = $settings->int('shipping.standard_days');
         $this->codEnabled = $settings->bool('cod.enabled');
+        $this->authRequireVerification = $settings->bool('auth.require_email_verification');
         $this->codMaxOrderRupees = number_format($settings->int('cod.max_order_paise') / 100, 2, '.', '');
         $this->razorpayMode = (string) $settings->get('razorpay.mode');
         $this->razorpayKeyId = (string) $settings->get('razorpay.key_id');
@@ -103,6 +106,7 @@ new class extends Component {
         $settings->set('shipping.free_threshold_paise', (string) \App\Services\MoneyFormatter::toPaise($validated['shippingFreeThresholdRupees']));
         $settings->set('shipping.standard_days', (string) $validated['shippingStandardDays']);
         $settings->set('cod.enabled', $this->codEnabled ? '1' : '0');
+        $settings->set('auth.require_email_verification', $this->authRequireVerification ? '1' : '0');
         $settings->set('cod.max_order_paise', (string) \App\Services\MoneyFormatter::toPaise($validated['codMaxOrderRupees']));
         $settings->set('razorpay.mode', $validated['razorpayMode']);
         $settings->set('razorpay.key_id', $validated['razorpayKeyId'] ?? '');
@@ -186,6 +190,12 @@ new class extends Component {
                 <flux:input type="number" min="1" max="30" wire:model="shippingStandardDays" />
                 <flux:error name="shippingStandardDays" />
             </flux:field>
+        </flux:card>
+
+        <flux:card class="space-y-4">
+            <flux:heading>{{ __('Accounts') }}</flux:heading>
+            <flux:switch wire:model="authRequireVerification" :label="__('Require email verification before account pages')" />
+            <flux:description>{{ __('Off by default. Customers can always shop; verification is then only requested for account pages.') }}</flux:description>
         </flux:card>
 
         <flux:card class="space-y-4">

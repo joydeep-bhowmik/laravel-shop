@@ -4,7 +4,7 @@ use App\Http\Controllers\Admin\ProductExportController;
 use Illuminate\Support\Facades\Route;
 
 // Admin pages are Folio routes in resources/views/pages/admin. Only non-page endpoints live here.
-Route::middleware(['auth', 'verified', 'can:admin.access'])
+Route::middleware(['auth', 'verified.if-required', 'can:admin.access'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {

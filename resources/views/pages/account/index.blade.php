@@ -3,7 +3,7 @@
 use function Laravel\Folio\{middleware, name};
 
 name('dashboard');
-middleware(['auth', 'verified']);
+middleware(['auth', 'verified.if-required']);
 ?>
 <x-layouts::app :title="__('My account')">
     <div class="grid max-w-2xl gap-4">
