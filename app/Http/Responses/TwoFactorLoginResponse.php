@@ -1,0 +1,20 @@
+<?php
+
+namespace App\Http\Responses;
+
+use Illuminate\Http\JsonResponse;
+use Laravel\Fortify\Contracts\TwoFactorLoginResponse as TwoFactorLoginResponseContract;
+use Symfony\Component\HttpFoundation\Response;
+
+class TwoFactorLoginResponse implements TwoFactorLoginResponseContract
+{
+    /**
+     * Send the user to the dashboard after a successful two-factor challenge.
+     */
+    public function toResponse($request): Response
+    {
+        return $request->wantsJson()
+            ? new JsonResponse(['two_factor' => false], 200)
+            : redirect()->intended(route('dashboard'));
+    }
+}
